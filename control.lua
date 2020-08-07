@@ -19,15 +19,4 @@ script.on_event(defines.events.on_player_mined_entity, trains.on_player_mined_or
 -- when rolling stock destoryed
 script.on_event(defines.events.on_entity_died, trains.on_player_mined_or_destroyed, {{filter="rolling-stock"}})
 
--- script.on_event(defines.events.on_player_rotated_entity, function(e) 
-
---     game.print(math.random() .."-----".. e.previous_direction)
-
--- end )
-
-
-
-
--- script.on_event(defines.events.on_entity_died, function(e) debug("cliffs") end, {{filter= "type", type = "cliff" }})
-
--- script.on_event(defines.events.on_entity_damaged, function(e) game.print("cliffs") end )
+script.on_nth_tick(60, trains.on_io)

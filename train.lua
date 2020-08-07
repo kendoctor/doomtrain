@@ -112,6 +112,7 @@ function Carriage:new(train, builtin_carriage, order)
         builtin_carriage = builtin_carriage,
         order = order,
         doors = {}, -- doors of this carriage 
+        io_entities = {},
         unit_number = builtin_carriage.unit_number -- @todo maybe removed using getUnitNumber()
     }
     setmetatable(o, self)      
@@ -119,7 +120,7 @@ function Carriage:new(train, builtin_carriage, order)
     return o
 end 
 
-function Carriage:build(tiles)
+function Carriage:build(tiles, entities)
     -- create room 
     -- create doors
     -- create entities for different type carriage
@@ -127,29 +128,151 @@ function Carriage:build(tiles)
     -- type 2. cargo-wagon
     -- type 3. fluid-wagon
     -- type 4. artillery-wagon
-    self:createRoom(tiles)
-    self:createDoors(tiles)
-    -- self:buildCarriageByType()
+    local type = self.builtin_carriage.type 
+    -- camelize 
+    local func_name = string.format( "build%s", camelize(type))
+    self[func_name](self, tiles, entities)
+    -- self:createRoom(tiles)
+    -- self:createDoors(tiles)
+    -- -- self:buildCarriageByType()
 end 
 
+--- Restore carriage from the old carriage or the save
 function Carriage:restore()
     -- find door entities and rebuild doors table
     self:restoreDoors()
 end 
 
-function Carriage:buildCarriageByType()
-    local type = self.builtin_carriage.type 
-    -- camelize 
-    local func_name = string.format( "build%s", camelize(type))
-    self[func_name]()
+
+--- Build locomotive carriage.
+-- @tparam table tiles 
+-- @tparam table entities
+function Carriage:buildLocomotive(tiles, entities)
+    debug("开始构建火车头")
+    self:createRoom(tiles)
+    self:createDoors(tiles)
+
+    -- Comfy Mnt style
+    local surface = self:getTrainSurface()
+    -- pond 
+    -- fish only can put in water, that's why should create water tiles first, then create fish entities
+    for x = -3, 2, 1 do
+        for y = 10, 12, 1 do
+            tiles[#tiles + 1] = { name = 'water', position = { x, y } }
+            -- entities[#entities + 1] = { name = 'fish', position = { x, y } }            
+        end
+    end
 end 
 
--- Build locomotive carriage 
-function Carriage:buildLocomotive()
-    debug("invoke")
+function Carriage:io(io_entity)
+    local func_name = string.format( "io%s", camelize(io_entity.name))
+    self[func_name](self, io_entity)
 end 
 
-function Carriage:buildCargoWagon()
+
+function Carriage:ioFiltered(wagon_inventory, chest, chest_inventory, free_slots)
+    local request_stacks = {}
+    local prototypes = game.item_prototypes
+    for slot_index = 1, 30, 1 do
+        local stack = chest.get_request_slot(slot_index)
+        if stack then
+            request_stacks[stack.name] = 10 * prototypes[stack.name].stack_size
+        end
+    end
+    for i = 1, wagon_inventory.get_bar() - 1, 1 do
+        if free_slots <= 0 then
+            return
+        end
+        local stack = wagon_inventory[i]
+        if stack.valid_for_read then
+            local request_stack = request_stacks[stack.name]
+            if request_stack and request_stack > chest_inventory.get_item_count(stack.name) then
+                chest_inventory.insert(stack)
+                stack.clear()
+                free_slots = free_slots - 1
+            end
+        end
+    end
+end 
+
+function Carriage:ioLogisticChestRequester(ic)
+
+    -- carriage builtin entity
+    local ce =  self.builtin_carriage
+
+    if not ic.request_from_buffers then return end
+    -- @fixme if carriage is not valid, io entities should be removed from table
+    if not ce  or not ce.valid then return end 
+
+    local ca_inv = ce.get_inventory(defines.inventory.cargo_wagon)
+    if ca_inv.is_empty() then return end
+
+    local ch_inv = ic.get_inventory(defines.inventory.chest)
+    local free_slots = 0
+
+    for i = 1, ch_inv.get_bar() - 1, 1 do
+        if not ch_inv[i].valid_for_read then free_slots = free_slots + 1 end
+    end
+
+    if ic.get_request_slot(1) then
+        self:ioFiltered(ca_inv, ic, ch_inv, free_slots)
+        return
+    end
+
+    for i = 1, ca_inv.get_bar() - 1, 1 do
+        if free_slots <= 0 then return end
+        if ca_inv[i].valid_for_read then
+            ch_inv.insert(ca_inv[i])
+            ca_inv[i].clear()
+            free_slots = free_slots - 1
+        end
+    end
+end
+
+function Carriage:ioLogisticChestPassiveProvider(io_entity)
+end
+
+
+function Carriage:buildCargoWagon(tiles, entities)
+    debug("开始构建货车车厢")
+    local area = self:getBuildingArea()
+    local ltx, lty, rbx, rby = area.left_top.x, area.left_top.y, area.right_bottom.x, area.right_bottom.y 
+
+    self:createRoom(tiles)
+    self:createDoors(tiles)
+
+    local i = function(p) return { name = 'logistic-chest-requester', position = p, force = 'neutral',  create_build_effect_smoke = false } end 
+    local o = function(p) return { name = 'logistic-chest-passive-provider', position = p, force = 'neutral',  create_build_effect_smoke = false  } end 
+
+    local io_chests =  {
+        i({ ltx + 3, lty + 1 } ), i({ ltx + 4, lty + 1 } ),
+        o({ rbx - 5, lty + 1 } ), o({ rbx - 4, lty + 1 } ),
+        i({ ltx + 3, rby - 2 } ), i({ ltx + 4, rby - 2 } ),
+        o({ rbx - 5, rby - 2 } ), o({ rbx - 4, rby - 2 } )
+    }
+
+    local surface = self:getTrainSurface()
+    local io_entities = self.train.trains.io_entities
+    entities[#entities+1]  = function() 
+        for _, chest in pairs(io_chests) do 
+            local e = surface.create_entity(chest)
+            e.minable = false
+            e.destructible = false 
+            self.io_entities[e.unit_number] = { entity = e, carriage = self }
+            io_entities[e.unit_number] = { entity = e, carriage = self }
+        end 
+    end 
+
+    
+    -- entities[#entities+1] = {
+    --     name = 'logistic-chest-requester',
+    --     position = { ltx + 4, lty + 1 },
+    --     force = 'neutral',
+    --     create_build_effect_smoke = false,
+    --     minable = false,
+    --     destructible = false 
+    -- }
+
 end 
 
 function Carriage:buildFluidWagon()
@@ -404,13 +527,18 @@ end
 -- these conditions above, should be considered for performance refactoring
 function Train:init()
     local tiles = {}
+    local entities = {}
 
     self:createSurface(tiles)
-    self:createCarriages(tiles)
+    self:createCarriages(tiles, entities)
 
-    if #tiles > 0 then 
-        self.surface.set_tiles(tiles, true)
-    end 
+    if #tiles > 0 then self.surface.set_tiles(tiles, true) end 
+
+    -- delay calls
+    for _,e in pairs(entities) do 
+        e()
+        -- self.surface.create_entity(e)        
+    end
 end 
 
 --- Create surface for the train.
@@ -457,10 +585,11 @@ end
 
 --- Create carriage from facto built-in carriage enity
 -- @tparam table tiles a reference table for holding all tiles data of the train, since consider to surface.set_tiles only once
+-- @tparam table entities
 -- @tparam LuaEntity builtin_carriage
 -- @tparam uint carriage_order
 -- @treturn Carriage
-function Train:createCarriage(tiles, builtin_carriage, carriage_order)
+function Train:createCarriage(tiles, entities, builtin_carriage, carriage_order)
 
     if not builtin_carriage or not builtin_carriage.valid then error("Invalid builtin carriage entity.") end 
 
@@ -473,7 +602,7 @@ function Train:createCarriage(tiles, builtin_carriage, carriage_order)
     if self.is_load_from_save or old_carriage then 
         new_carriage:restore()
     else 
-        new_carriage:build(tiles)     
+        new_carriage:build(tiles, entities)     
     end 
     
     return new_carriage
@@ -481,7 +610,8 @@ end
 
 --- Create carriages for this train.
 -- @tparam table tiles a reference table for holding all tiles data of the train, since consider to surface.set_tiles only once
-function Train:createCarriages(tiles)
+-- @tparam table entities
+function Train:createCarriages(tiles, entities)
     if not self.builtin_train or not self.builtin_train.valid then 
         error("Invalid builtin train")
     end 
@@ -491,7 +621,7 @@ function Train:createCarriages(tiles)
     local carriage_order = 1
     for _, builtin_carriage in pairs(self.builtin_train.carriages) do
 
-        local new_carriage = self:createCarriage(tiles, builtin_carriage, carriage_order)
+        local new_carriage = self:createCarriage(tiles, entities, builtin_carriage, carriage_order)
 
         self.carriages[carriage_order] = new_carriage
         -- @todo if the same unit_number old carriage exists, before new carriage replacing it in the table
@@ -534,7 +664,8 @@ function Trains:new()
         is_loaded = false, -- loaded once when game started
         trains = {}, -- hold all trains info
         carriages = {}, -- this table which holds all carriages for easy finding 
-        doors = {} -- this table which holds all doors of carriage for easy finding carriage which the door belongs to 
+        doors = {}, -- this table which holds all doors of carriage for easy finding carriage which the door belongs to
+        io_entities = {}
     }
     setmetatable(o, self)
     self.__index = self
@@ -778,6 +909,12 @@ function Trains.on_init(e)
     -- it can accept more open world map surfaces for surfaces parameters
     trains:load()
    
+end 
+
+function Trains.on_io(e)
+    for _, io in pairs(trains.io_entities) do 
+        io.carriage:io(io.entity)
+    end
 end 
 
 -- @export trains
