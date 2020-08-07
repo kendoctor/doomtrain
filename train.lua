@@ -1,14 +1,102 @@
 -- debug function 
-local n_uid, b_done = 0, false 
+local n_uid = 0 
 local function debug(message)
   game.print(string.format('UID#%s --> %s', n_uid, message))
   n_uid = n_uid + 1
 end
 
+function explode(d,p)
+    local t, ll, l
+    t={}
+    ll=0
+    if(#p == 1) then
+       return {p}
+    end
+    while true do
+       l = string.find(p, d, ll, true) -- find the next d in the string
+       if l ~= nil then -- if "not not" found then..
+          table.insert(t, string.sub(p,ll,l-1)) -- Save it in our array.
+          ll = l + 1 -- save just after where we found it for searching next time.
+       else
+          table.insert(t, string.sub(p,ll)) -- Save what's left in our array.
+          break -- Break at end, as it should be, according to the lua manual.
+       end
+    end
+    return t
+ end
+
+local function ucfirst(str)
+    return string.upper( string.sub( str, 1,  1) ) .. 
+        string.sub(str, 2)
+end
+
+local function camelize(str)
+    local tokens = {}
+    for i,v in pairs(explode("-", str)) do 
+        tokens[i] = ucfirst(v)
+    end 
+    return table.concat( tokens, "")
+end
+
+
+--- Carriage Door Class.
+-- @classmod Door
+local Door = {}
+
+--- Create a new door.
+-- @tparam Carriage carriage
+-- @treturn Door
+function Door:new(carriage, entity)
+    local o = {
+        entity = entity,
+        unit_number = nil, -- @todo maybe removed using  getUnitNumber
+        carriage = carriage
+    }
+    setmetatable(o, self)      
+    self.__index = self
+    return o
+end 
+
+--- Initialize door.
+-- unit_nubmer and entity property available only when door initialized
+-- @tparam Table tiles
+-- @tparam LuaPosition position
+function Door:init(tiles, position)
+    local door 
+    local main_tile_name = 'black-refined-concrete'
+
+    if self.entity then 
+        self.unit_number = self.entity.unit_number
+    else 
+        tiles[#tiles+1] =  { name = main_tile_name, position = { position.x, position.y - 1 } }
+        tiles[#tiles+1] =  { name = main_tile_name, position = { position.x, position.y } }
+        
+        door =
+            self.carriage:getTrainSurface().create_entity(
+            {
+                name = 'player-port',
+                position = position,
+                force = 'neutral',
+                create_build_effect_smoke = false
+            }
+        )
+
+        door.destructible = false
+        door.minable = false
+        door.operable = false
+        
+        self.unit_number = door.unit_number
+        self.entity = door
+    end 
+end 
+
+function Door:getUnitNumber()
+    if not self.entity or not self.entity.valid then error("Invalid door entity.") end 
+    return self.entity.unit_number
+end 
 
 --- Carriage Class.
 -- @classmod Carriage
--- description
 local Carriage = {}
 
 -- @section Carriage members
@@ -24,12 +112,52 @@ function Carriage:new(train, builtin_carriage, order)
         builtin_carriage = builtin_carriage,
         order = order,
         doors = {}, -- doors of this carriage 
-        unit_number = builtin_carriage.unit_number 
+        unit_number = builtin_carriage.unit_number -- @todo maybe removed using getUnitNumber()
     }
     setmetatable(o, self)      
     self.__index = self
     return o
 end 
+
+function Carriage:build(tiles)
+    -- create room 
+    -- create doors
+    -- create entities for different type carriage
+    -- type 1. locomotive
+    -- type 2. cargo-wagon
+    -- type 3. fluid-wagon
+    -- type 4. artillery-wagon
+    self:createRoom(tiles)
+    self:createDoors(tiles)
+    -- self:buildCarriageByType()
+end 
+
+function Carriage:restore()
+    -- find door entities and rebuild doors table
+    self:restoreDoors()
+end 
+
+function Carriage:buildCarriageByType()
+    local type = self.builtin_carriage.type 
+    -- camelize 
+    local func_name = string.format( "build%s", camelize(type))
+    self[func_name]()
+end 
+
+-- Build locomotive carriage 
+function Carriage:buildLocomotive()
+    debug("invoke")
+end 
+
+function Carriage:buildCargoWagon()
+end 
+
+function Carriage:buildFluidWagon()
+end 
+
+function Carriage:buildArtilleryWagon()
+end 
+
 
 --- Get uint_number of this carriage.
 -- @treturn uint unit_number
@@ -48,15 +176,23 @@ function Carriage:getBuildingArea()
 end 
 
 --- The area which includes building area and other areas such as doors, input and output chests, fluid tanks etc.
+-- @todo this function will be removed
 -- @treturn BoundingBox
 function Carriage:getClonedArea()
     local area = self:getBuildingArea()
     return { { area.left_top.x-2, area.left_top.y }, { area.right_bottom.x+2, area.right_bottom.y } }
 end
 
--- Convenient function for get the surface of the train which this carriage is attached
+--- Convenient function for get the surface of the train which this carriage is attached.
 function Carriage:getTrainSurface()
     return self.train:getSurface()
+end 
+
+--- Get the surface on which this carriage stays on.
+-- @treturn LuaSurface
+function Carriage:getSurfaceOn()
+    if not self.builtin_carriage or not self.builtin_carriage.valid then error("Invalid builtin carriage") end
+    return self.builtin_carriage.surface
 end 
 
 --- Check whether this carriage is a locomotive.
@@ -83,6 +219,27 @@ function Carriage:hasDriver()
     return not(not self:getDriver())
 end 
 
+
+--- Clone room from the old carriage which has the same builtin_carriage.
+-- @tparam Carriage old_carriage
+-- @tparam table tiles a reference table for holding all tiles data of the train, since consider to surface.set_tiles only once
+function Carriage:cloneArea(old_carriage) 
+    local source_area = old_carriage:getClonedArea()
+    local destination_area = self:getClonedArea()
+
+    old_carriage:getTrainSurface().clone_area({
+        source_area = source_area,
+        destination_area = destination_area,
+        destination_surface = self:getTrainSurface(),
+        clone_tiles = true,
+        clone_entities = true,
+        clone_decoratives = true,
+        clear_destination_entities = true,
+        clear_destination_decoratives = true,
+        expand_map = true
+    })
+    
+end 
 --- Create room for this carriage, such as tiles, decoratives, doors etc.
 -- If this carriage is newly created or first initialized(lazy mode, when any player enters the train which this carriage attached in the first time)
 -- @tparam table tiles a reference table for holding all tiles data of the train, since consider to surface.set_tiles only once
@@ -110,42 +267,73 @@ function Carriage:createRoom(tiles)
         tiles[#tiles + 1] = {name = 'hazard-concrete-right', position = {x, area.right_bottom.y-1 }}
     end
 
-    -- create tiles and entities of doors of the carriage 
-    self:createDoors(tiles)
 end
 
+--- Restore doors from exisiting entities
+-- if carriage area is cloned from the old or loaded from save
+function Carriage:restoreDoors()
+    local surface = self:getTrainSurface()
+    local door_entities = surface.find_entities_filtered({ area = self:getClonedArea(), name = "player-port" })
+    for i, door_entity in pairs(door_entities) do 
+        local door = Door:new(self, door_entity)
+        door:init()  
+        self.doors[door.unit_number] = door
+        -- @todo before carriage removed from table, should remove its door in this table
+        self.train.trains.doors[door.unit_number] = door
+    end 
+end 
 
 --- Create doors of the carriage for players to exit out.
 -- @tparam table tiles a reference table for holding all tiles data of the train, since consider to surface.set_tiles only once
 function Carriage:createDoors(tiles)
     local area = self:getBuildingArea()
     local surface = self:getTrainSurface()
+    tiles = tiles or {}
 
-    if not surface or not surface.valid then 
-        error("Invalid surface")
-    end 
-
-    local main_tile_name = 'black-refined-concrete'
     for _, x in pairs( { area.left_top.x - 1, area.right_bottom.x + 0.5 } ) do
-        local p = { x, area.left_top.y + 29 }
-        tiles[#tiles+1] =  { name = main_tile_name, position = { x, area.left_top.y + 29 } }
-        tiles[#tiles+1] =  { name = main_tile_name, position = { x, area.left_top.y + 30 } }
 
-        -- @todo get boundingbox from prototype
-        local door =
-            surface.create_entity(
-            {
-                name = 'player-port',
-                position = { x, area.left_top.y + ((area.right_bottom.y - area.left_top.y) * 0.5) },
-                force = 'neutral',
-                create_build_effect_smoke = false
-            }
-        )
-        door.destructible = false
-        door.minable = false
-        door.operable = false
-        self.doors[door.unit_number] = door
+        local door = Door:new(self)
+        door:init(tiles, { x = x, y = area.left_top.y + ((area.right_bottom.y - area.left_top.y) * 0.5) } )
+  
+        self.doors[door:getUnitNumber()] = door
+        -- @todo before carriage removed from table, should remove its door in this table
+        self.train.trains.doors[door:getUnitNumber()] = door
     end
+end 
+
+--- Let player enter into the carriage
+-- @tparam LuaPlayer player
+function Carriage:LetPlayerEnter(player)
+    local surface = self:getTrainSurface()
+    local area = self:getBuildingArea()
+    local x_vector = self.builtin_carriage.position.x - player.position.x
+    local center_pos
+
+    -- left door
+    if x_vector > 0 then
+        center_pos = { area.left_top.x + 0.5, area.left_top.y + ((area.right_bottom.y - area.left_top.y) * 0.5) }
+    else
+        center_pos = { area.right_bottom.x - 0.5, area.left_top.y + ((area.right_bottom.y - area.left_top.y) * 0.5) }
+    end
+    local target_pos = surface.find_non_colliding_position('character', center_pos, 128, 0.5)
+
+    target_pos = target_pos or center_pos
+    player.teleport(target_pos, surface)
+
+end
+
+--- Let player exit out the carriage when the player touches the door
+-- @tparam LuaPlayer player
+function Carriage:LetPlayerExitFromDoor(player, door)
+    local surface = self:getSurfaceOn()
+    -- @fixme if the train aligns horizontally
+    local x_vector = (door.entity.position.x / math.abs(door.entity.position.x)) * 2
+    local center_pos = { self.builtin_carriage.position.x + x_vector, self.builtin_carriage.position.y }
+    local target_pos = surface.find_non_colliding_position('character', center_pos, 128, 0.5)
+
+    if target_pos then 
+        local result = player.teleport(target_pos, surface)
+    end 
 end 
 
 function Carriage:__tostring()
@@ -165,12 +353,15 @@ local Train = {}
 
 -- @section Train members
 
--- Create a new train from facto built-in train object.
+--- Create a new train from facto built-in train object.
 -- @tparam LuaTrain builtin_train facto built-in train
 -- @tparam Trains trains 
+-- @tparam LuaSurface 
 -- @treturn Train
 function Train:new(builtin_train, trains)
     local o = {
+        is_load_from_save = false, -- if this train loaded from save
+        id = builtin_train.id, -- @fixme maybe builtin_train not valid
         builtin_train = builtin_train,
         trains = trains,
         carriages = {} -- carriages of the train
@@ -181,14 +372,9 @@ function Train:new(builtin_train, trains)
 end 
 
 --- Get Id of the train.
--- If the builtin train already outdated, it will return nil
 -- @treturn uint
 function Train:getId()
-    if self.builtin_train and self.builtin_train.valid then 
-        return self.builtin_train.id
-    else
-        return nil
-    end 
+    return self.id
 end
 
 --- Get surface name of this train.
@@ -201,6 +387,7 @@ end
 -- Get surface of this train.
 -- @treturn LuaSurface
 function Train:getSurface()
+    if not self.surface or not self.surface.valid then error("Invalid surface.") end
     return self.surface
 end
 
@@ -216,12 +403,6 @@ end
 -- 4. trains' carriages connected, one of the trains' surface can be reused and another one could be release or be reserved for later usage
 -- these conditions above, should be considered for performance refactoring
 function Train:init()
-    -- step for initialization
-    -- 1. create surface
-    -- 2. create or recover tiles for carriages
-
-    -- since surface.set_tiles should not be called very frequently
-    -- asap, should consider buffering all tiles and setting only once
     local tiles = {}
 
     self:createSurface(tiles)
@@ -237,10 +418,10 @@ end
 -- If new train created, create a new surface for this train
 -- @tparam table tiles a reference table for holding all tiles data of the train, since consider to surface.set_tiles only once
 function Train:createSurface(tiles)
-    tiles = tiles or {}
     local surface_name = self:getSurfaceName()
     local surface = game.surfaces[surface_name]
 
+    -- @todo chart surface if the train.force == player.force
     if not surface then
         local map_gen_settings = {
             ['width'] = 2,
@@ -263,10 +444,12 @@ function Train:createSurface(tiles)
         surface.force_generate_chunk_requests()
 
         -- clear default tiles 
-        for _, tile in pairs(surface.find_tiles_filtered({area = {{-2, -2}, {2, 2}}})) do
+        for _, tile in pairs(surface.find_tiles_filtered({area = {{-2, -2}, {2, 0}}})) do
             tiles[#tiles+1] = { name = 'out-of-map', position = tile.position } 
         end
-    end 
+    else
+        self.is_load_from_save = true
+    end  
 
     self.surface = surface 
     return surface
@@ -279,40 +462,18 @@ end
 -- @treturn Carriage
 function Train:createCarriage(tiles, builtin_carriage, carriage_order)
 
-    if not builtin_carriage or not builtin_carriage.valid then 
-        error("Invalid builtin carriage entity")
-    end 
+    if not builtin_carriage or not builtin_carriage.valid then error("Invalid builtin carriage entity.") end 
 
-    -- check this carriage did exist in the old train 
-    -- since carriage's unit_number will not change except which is destoryed, but newly created train's id always changes
-    local old_carriage = self.trains:getCarriageByUnitNumber(builtin_carriage.unit_number)  
     local new_carriage = Carriage:new(self, builtin_carriage, carriage_order )
+    -- if the train load from save 
 
-    -- if old carriage found, which means players maybe built stuffs in this carriage
-    -- should clone the whole area of this carriage into the new carriage's destination area including doors
-    if old_carriage then 
-        -- if needs to clone old carriage area, should flush tiles into surface first
-        if #tiles > 0 then 
-            self.surface.set_tiles(tiles, true)
-            tiles = {}
-        end 
+    local old_carriage = self.trains:getCarriageByBuiltinCarriage(builtin_carriage)  
+    if old_carriage then new_carriage:cloneArea(old_carriage) end 
 
-        local source_area = old_carriage:getClonedArea()
-        local destination_area = new_carriage:getClonedArea()
-        old_carriage.train.surface.clone_area({
-            source_area = source_area,
-            destination_area = destination_area,
-            destination_surface = self.surface,
-            clone_tiles = true,
-            clone_entities = true,
-            clone_decoratives = true,
-            clear_destination_entities = true,
-            clear_destination_decoratives = true,
-            expand_map = true
-        })
-        debug(old_carriage)
+    if self.is_load_from_save or old_carriage then 
+        new_carriage:restore()
     else 
-        new_carriage:createRoom(tiles)
+        new_carriage:build(tiles)     
     end 
     
     return new_carriage
@@ -333,6 +494,8 @@ function Train:createCarriages(tiles)
         local new_carriage = self:createCarriage(tiles, builtin_carriage, carriage_order)
 
         self.carriages[carriage_order] = new_carriage
+        -- @todo if the same unit_number old carriage exists, before new carriage replacing it in the table
+        -- should clear the old carriage data
         self.trains.carriages[new_carriage:getUnitNumber()] = new_carriage
         carriage_order = carriage_order + 1
         debug(new_carriage)
@@ -359,10 +522,8 @@ local Trains = {}
 
 -- constants 
 Trains.constants = {
-    TRAIN_SURFACE_PREFIX_NAME = "train-surface-"
+    TRAIN_SURFACE_PREFIX_NAME = 'train-surface-'
 }
-
-Trains.TRAIN_SURFACE_PREFIX_NAME = "train-surface-"
 
 -- @section Trains members
 
@@ -370,7 +531,7 @@ Trains.TRAIN_SURFACE_PREFIX_NAME = "train-surface-"
 -- @treturn Trains
 function Trains:new()
     local o = {
-        b_initialized = false, -- initialized once when game started
+        is_loaded = false, -- loaded once when game started
         trains = {}, -- hold all trains info
         carriages = {}, -- this table which holds all carriages for easy finding 
         doors = {} -- this table which holds all doors of carriage for easy finding carriage which the door belongs to 
@@ -391,7 +552,8 @@ function Trains.getInstance()
     return Trains._instance
 end 
 
-
+--- Count all the trains in the table.
+-- @treturn uint 
 function Trains:getCountOfTrains()
     local c = 0
     for _,v in pairs(self.trains) do
@@ -400,6 +562,8 @@ function Trains:getCountOfTrains()
     return c
 end 
 
+--- Count all the carriages in the table.
+-- @treturn uint 
 function Trains:getCountOfCarriages()
     local c = 0
     for _,v in pairs(self.carriages) do
@@ -408,28 +572,50 @@ function Trains:getCountOfCarriages()
     return c
 end 
 
+
+--- Get carriage by the unit_number of one builtin carriage.
+-- @tparam uint unit_number
+-- @treturn Carriage 
+function Trains:getCarriageByUnitNumber(unit_number)
+    return self.carriages[unit_number]
+end
+
+--- Get carriage by the builtin carriage which is bound.
+-- @tparam LuaEntity bultin_carriage
+-- @treturn Carriage 
 function Trains:getCarriageByBuiltinCarriage(builtin_carriage)
-    return self.carriages[builtin_carriage.unit_number]
+    if not builtin_carriage or not builtin_carriage.valid then error("Invalid builtin carriage") end 
+    return self:getCarriageByUnitNumber(builtin_carriage.unit_number)
 end 
 
+--- Get train by the unit_number of one builtin carriage.
+-- @tparam LuaEntity bultin_carriage
+-- @treturn Train 
 function Trains:getTrainByBuiltinCarriage(builtin_carriage)
     local carriage = self:getCarriageByBuiltinCarriage(builtin_carriage)
     if carriage then return carriage.train end 
     return nil
 end 
 
+--- Get carriage by one door entity which belongs to this carriage
+-- @tparam LuaEntity door_entity 
+-- @treturn Door
+function Trains:getDoorByEntity(door_entity)
+    if not door_entity or not door_entity.valid then error("Invalid door entity") end  
+    return self.doors[door_entity.unit_number]
+end
+
+--- Remove carriage from the table by its unit_number.
+-- @tparam uint unit_number
 function Trains:removeCarriageByUnitNumber(unit_number)
     self.carriages[unit_number] = nil
 end 
 
-function Trains:getCarriageByUnitNumber(unit_number)
-    return self.carriages[unit_number]
-end
-
---- Create train from facto builtin train for holding extra info.
+--- Load train from save with facto builtin train for holding extra info.
 -- @tparam LuaTrain builtin_train 
 -- @treturn Train
 function Trains:createTrain(builtin_train)
+    if not builtin_train or not builtin_train.valid then error("Invalid builtin train.") end 
     local new_train = Train:new(builtin_train , self)
     new_train:init()
     self.trains[new_train:getId()] = new_train
@@ -440,9 +626,9 @@ end
 -- since each train has its surface attched, expected surfaces should not be train surfaces
 -- building train in train's carriage is not allowed
 -- @tparam table surfaces an array of surfaces which trains stay on
-function Trains:init(surfaces)
-    if not self.b_initialized then 
-        self.b_initialized = true 
+function Trains:load(surfaces)
+    if not self.is_loaded then 
+        self.is_loaded = true 
         surfaces = surfaces or { game.surfaces[1] }
         for _, surface in pairs(surfaces) do 
             for _, builtin_train in pairs(surface.get_trains()) do 
@@ -452,7 +638,6 @@ function Trains:init(surfaces)
         debug(self)
     end 
 end
-
 
 --- Remove train by its id.
 -- remove the train and clear its data
@@ -471,7 +656,7 @@ function Trains:removeTrain(train_id)
         -- otherwise, trains.carriages table will be fixed properly at last after two on_train_created events triggered
         -- it means old carriages which are still exisiting will be all replaced by newly-created carriages in trains.carriages table
 
-        -- TODO: train_to_remove.destory()
+        -- @todo: train_to_remove.destory()
         self.trains[train_id] = nil
     end 
 end 
@@ -480,9 +665,9 @@ end
 -- @treturn string
 function Trains:__tostring()
     return string.format(
-        "Trains > _instance: %s, initialized: %s, counts of trains: %s, count of carriages: %s", 
+        "Trains > _instance: %s, loaded: %s, counts of trains: %s, count of carriages: %s", 
         not(not self._instance), 
-        self.b_initialized, 
+        self.is_loaded, 
         self:getCountOfTrains(), 
         self:getCountOfCarriages()
     )
@@ -502,51 +687,56 @@ function Trains.on_player_exits_train(e)
     -- check if the player stays on a train's surface
     -- if the surface of one train named like "train-surface-" + train_id, only check the prefix which can determine whether the player stays on one train
     local surface_on  = player.surface  
-    local prefix = string.sub (surface_on.name, 1, string.len(Trains.TRAIN_SURFACE_PREFIX_NAME))
-    if prefix ==  Trains.TRAIN_SURFACE_PREFIX_NAME then
-      -- player stays on one train 
-      -- find the exit portal by the current position of the player
-      -- via the player port entity found which plays as a door, get carriage of this door
-      -- teleport the player to the surface which the carriage stays on and nearby this carriage
-      local player_port = surface_on.find_entity('player-port', player.position)
-      if player_port then 
-          -- if found, then found this door's carriage, if the player exit out this carriage ,should be repositioned nearby this carriage
-          -- and if exit this carriage, the player will be teleport onto the surface which the train belongs to 
-          player.teleport({2, 2}, game.surfaces[1])
-      end 
+  
+    -- if string.starts(surface_on.name, Trains.constants.TRAIN_SURFACE_PREFIX_NAME) then 
+    local prefix = string.sub (surface_on.name, 1, string.len(Trains.constants.TRAIN_SURFACE_PREFIX_NAME))
+    if prefix ==  Trains.constants.TRAIN_SURFACE_PREFIX_NAME then
+        -- player stays on one train 
+        -- find the exit portal by the current position of the player
+        -- via the player port entity found which plays as a door, get carriage of this door
+        -- teleport the player to the surface which the carriage stays on and nearby this carriage
+        local door_entity = surface_on.find_entity('player-port', player.position)
+        if door_entity then 
+            local door = trains:getDoorByEntity(door_entity)
+            if door then door.carriage:LetPlayerExitFromDoor(player, door) end 
+        end 
     end 
 end 
 
 
---- Event handler when player enters the train
+--- Event handler when player enters the train.
+-- listen event defines.events.on_player_driving_changed_state
 -- if the player enter into a locomotive
 -- first press enter key, be a driver or a passenger
 -- second press enter key, enter the carriage room
 -- @tparam Event e
 function Trains.on_player_enters_train(e)
+    -- if Players defined, should be like this players.getByIndex(e.player_index)
     local player = game.get_player(e.player_index)
     -- vehicle including cars, tanks, but, here expects carriages of train
     -- check types of each vehicle which can determine this vehicle is type of rolling stock
     -- but, here, using another way, check whether the entity.train is nil or valid one
-    local vehicle = e.entity 
+    -- local vehicle = e.entity 
+    local carriage = trains:getCarriageByBuiltinCarriage(e.entity)
+    if not carriage then return end 
 
-    if vehicle.train then 
-        --check if the player enter or exit the carriage by the surface on which the play currently stays
-        -- if the player stays on the surface same as the train does, that means the player outside of the train
-        -- TODO : but, except for locomotives,  if let the player drive the train, should leave this player in proper state. 
-        if player.surface == vehicle.surface then 
-            -- find this carriage's train 
-            local carriage = trains:getCarriageByBuiltinCarriage(vehicle)
-            
-            if carriage:isLocomotive() and player.vehicle == vehicle then 
-                debug("The player enter the train for a driver")
-                return 
-            end
-            if carriage and carriage.train then 
-                player.teleport({2, 2}, carriage.train.surface)
-            end 
-        end 
-    end 
+    -- if not vehicle or not vehicle.valid then error("Invalid vehicle") end 
+    if not player or not player.valid then  error("Invalid player ") end 
+
+    
+    if player.driving and carriage:isLocomotive() then return end 
+
+    -- player ready to enter the train room    
+    if carriage and player.surface == carriage:getSurfaceOn() then 
+        -- @todo needs Player class to hold extra info for which side the player entered from
+        -- solution : when enter the locomotive, directly let player enter the room, 
+        -- when the player exit out, set the player as driver if there's no driver in this locomotive
+        -- if player.driving and carriage:isLocomotive() then return end 
+   
+        carriage:LetPlayerEnter(player)
+          
+    end
+
 end
 
 -- Event handler when player mined the train or the train was destoryed.
@@ -586,7 +776,7 @@ end
 function Trains.on_init(e)
     -- default, only one nauvis surface 
     -- it can accept more open world map surfaces for surfaces parameters
-    trains:init()
+    trains:load()
    
 end 
 
