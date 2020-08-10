@@ -1,5 +1,5 @@
 local Global = require("global")
--- local Event = require("event")
+local Event = require("event")
 
 --- IOBridges module
 -- @mod IOBridges
@@ -321,15 +321,17 @@ function IOBridges.on_exchange(e)
     end 
 end 
 
+
 function IOBridges.on_removed(e)
     IOBridges.init()
-    game.print("120-2----"..math.random()) 
     IOBridges.removeIOBridgesByEntity(e.entity)
 end
 
 
 
 --- should remove bridges when one entity die or destoryed or mined
+Event.on(defines.events.on_player_mined_entity, IOBridges.on_removed)
+Event.on(defines.events.on_entity_died, IOBridges.on_removed)
 
 -- @export
 return IOBridges, IOBridge
