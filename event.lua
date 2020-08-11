@@ -1,16 +1,38 @@
 --- Event Class
+-- If consider priority handlers, needs an array table to hold handlers, otherwise needs sorting before call
+-- do we need coroutine to guarrantee on_loaded event which will be registered and triggered first ?
 -- @classmod Event 
 
 local Event = {}
-local handlers = {}
-local nth_tick_handlers = {}
+local handlers = {} 
+local nth_tick_handlers =  {}
+local loaded_handlers = {}
+local loaded_event_triggered = false 
+local blank_call = function(e) 
+    -- nothing to do, only trigger event == defines.events.on_tick
+end 
+
 
 --- @todo add debug mode
 function Event.callHandlersOfSameEvent(event)
+    if event.name == defines.events.on_tick and not loaded_event_triggered then Event.callHanldersOfLoadedEvent(event) end 
     for _, h in pairs(handlers[event.name]) do h(event)  end 
 end 
 
+--- This will be called before handlers which were registered via Event.on_nth_tick(1,..)
+-- loaded handlers will be only called once, when finished, will be removed at once
+function Event.callHanldersOfLoadedEvent(event)
+    for k, h in pairs(loaded_handlers) do 
+        h(event)  
+        loaded_handlers[k] = nil
+    end 
+    loaded_event_triggered = true
+    Event.remove(defines.events.on_tick, blank_call)
+end 
+
+--- Call Event.on_nth_tick(...) registered handlers
 function Event.callHandlersOfSameTicks(event)
+    -- if event.nth_tick == 1 and not loaded_event_triggered then Event.callHanldersOfLoadedEvent(event) end 
     for _, h in pairs(nth_tick_handlers[event.nth_tick]) do h(event)  end 
 end 
 
@@ -85,6 +107,21 @@ function Event.remove(event, handler)
     if handlers[event] == nil then script.on_event(event, nil) end 
 end 
 
+
+--- Register handlers for initialization when game started(new game or load a save).
+-- These handlers will be called once, then removed
+-- Note: Registered handlers can not be removed manually.
+-- @todo Queued in high priority
+-- @fixme how to guarrantee handlers will be called before any other defines.events triggered?
+function Event.on_loaded(handler)
+    if loaded_event_triggered then error("Loaded event already triggered. Not allowed to register on_loaded event in another event handler.") end 
+    if handler == nil then error("Handler should not be nil.") end 
+    if type(handler) ~= "function" then error("Handler should be callable.") end 
+
+    if next(loaded_handlers) == nil then Event.add(defines.events.on_tick, blank_call) end 
+    loaded_handlers[handler] = handler
+end 
+
 --- Add one handler for the specific nth tick.
 -- can add multiple handlers for the same nth tick
 -- @tparam uint tick 
@@ -93,6 +130,8 @@ function Event.add_nth_tick(tick, handler)
     local sub_handlers = nth_tick_handlers[tick]
     
     if handler == nil then error("Using Event.remove to remove event handler instead of using nil handler.") end 
+    if type(handler) ~= "function" then error("Handler should be callable.") end 
+
     if sub_handlers then 
         sub_handlers[handler] = handler
     else
