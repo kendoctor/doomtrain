@@ -1,10 +1,13 @@
 local Class = require("oop.Class")
 
-
+--- Map class
+-- @classmod Map
 local Map = Class.create()
 
+--- Copy table items into this map
+-- @tparam table a table passed from class constructor
 function Map:__init(tbl)    
-    if type(tbl) ~= "table" then error("tbl should be table type.") end 
+    if type(tbl) ~= "table" then return end 
     for k,v in pairs(tbl) do         
         self[k] = v
     end 
