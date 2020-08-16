@@ -14,6 +14,31 @@ local function table_copy(destiny, source)
     return destiny
 end 
 
+local function table_overwrite_merge(origin, source)
+    if source then 
+        for k,v in pairs(source) do 
+            origin[k] = v
+        end 
+    end 
+    return origin
+end
+
+local function table_append_merge(origin, source)
+    if source then 
+        for k,v in pairs(source) do 
+            if origin[k] == nil then origin[k] = v end
+        end 
+    end 
+    return origin
+end
+
+local function table_exist_merge(origin, source)
+    if source then 
+        for k,v in pairs(source) do if origin[k] ~= nil then origin[k] = v end end 
+    end 
+    return origin
+end
+
 --- Instance Class object
 -- This function only used internally
 -- if OneClass:__init exists, variable parameters will be passed in
@@ -26,61 +51,74 @@ end
 ]]
 -- @tparam table class
 ---@param ... variable parameters passed into oneClass:__init(...)
-local function new(class, ...)
-    local instance = setmetatable(table_copy({}, class.__default_properties), class)
+local function call_handler(class, ...)
+    -- @todo considering less memory usage, lazy build default property members
+    -- But, this will cause instancing object a little bit slow
+    local instance = setmetatable(table_copy({}, class.__property_members), class)
     --- if ... has values, then override the instance's default values
     -- if ... ~= nil then 
     --     local default_properties 
     --     if type(...) ~= "table" then default_properties = { ... }
     -- end 
-    if class.__init then 
-        instance:__init(...) 
-    elseif ... ~= nil then 
+    -- @todo add event __pre__init and __post_init
+    if class.__init then
+        instance:__init(...)
+    elseif ... ~= nil then
         local default_values = ...
-        if type(...) ~= "table" then default_values = { ... } end 
-        for k,v in pairs(default_values) do if instance[k] ~= nil then instance[k] = v end end 
+        if type(...) ~= "table" then default_values = { ... } end      
+        table_exist_merge(instance, default_values)           
     end 
     return instance
+end 
+
+--- if not overrided this function, will be called here.
+function class_pairs_handler(class, k)
+    local metatable = Class.classof(class)
+    -- if class.super then 
+    --     metatable
+end 
+
+--- if not overrided this function, will be called here.
+-- find implementation if object' class has superclass
+function object_pairs_handler(class, tbl, k)     
+    assert(class ~= nil)
+    local super = class.super 
+    if super and super.__pairs then 
+        return super.__pairs(tbl, k)
+    end 
+    -- while class.super do
+    --     local pairs_handler = class.super.__pairs
+    --     if pairs_handler and pairs_handler ~= object_pairs_handler then 
+    --         return pairs_handler(object, k, class.super) 
+    --     end 
+    --     class = class.super
+    -- end 
+    
 end 
 
 --- Private function for init class
 --  newly created Class always be blank, 
 -- metatable members of Class should be declared and implemented after Class created 
-local function initClass(default_properties, superclass)
-    -- newly created Class always be blank
+-- @todo hide __property_members, __metalize into class's metatable
+local function initClass(property_members, superclass)
     local class = {}
+    property_members = property_members or {}
+    if superclass then table_append_merge(property_members, superclass.__property_members) end 
     class.__index = class
-    class.__metalize = Class.__metalize 
-    class.__default_properties = default_properties or {}
-    class.super = class.super or superclass
+    class.__metalize = Class.__metalize     
+    class.__property_members = property_members
+    --- @todo every class has different handler 
+    -- class.__pairs = object_pairs_handler
+    -- class.__object_pairs_handler = function(class, tbl, k )
+    class.__pairs = function(tbl, k)
+        -- if this class overwrote __pairs, here will be not called of this class
+        -- otherwise, if the class does not implement __pairs
+        return object_pairs_handler(class, tbl, k)
+    end     
     return class
 end
 
-local MetaClass = { __call = new }
---- Create a new none metatable members Class with default properties which have default values for its instances.
--- after class creation, could define metatable members for this class
---[[--@usage    
-    local Train = Class.create() -- create a blank Train class
-    -- create a Dog Class with some default properties
-    local Dog = Class.create({ name = "juejue", age = 1 }) 
-    -- create a method(function) member which will bed shared overall of its instances
-    function Dog:bark()
-        print(self.name)
-    end 
-    -- instance a dog 
-    local black = Dog()
-    assert(black.name == "juejue")
-    -- create a new property only for this dog
-    black.weight = 10
-    local white = Dog()
-    white:bark()
-]]
--- NOTE: property members of an instance could have different values with others
--- metatable members are derived from Class via setmetatable, they are shared in all its instances
--- @tparam table default_properties 
-function Class.create(default_properties)
-    return setmetatable(initClass(default_properties), MetaClass) 
-end 
+local MetaClass = { __call = call_handler }
 
 --- Consistent interface for class to get metatable
 Class.classof = getmetatable
@@ -88,7 +126,7 @@ Class.classof = getmetatable
 --- Check whether a table is an object created from class which created by Class.create
 function Class.isClass(class)
     local metaclass = classof(class)
-	if metaclass and metaclass.__call == new then return true end
+	if metaclass and metaclass.__call == call_handler then return true end
 	return false
 end 
 
@@ -107,12 +145,26 @@ function Class.instanceof(object, class)
 end
 
 -- Extand one class from another class with default values
-function Class.extend(default_properties, superclass)
+function Class.extend(property_members, superclass)
+    local metatable = { __call = call_handler, __pairs = class_pairs_handler }
+    local class = initClass(property_members, superclass)
     if superclass then 
-        return setmetatable(initClass(default_properties, superclass), { __call = new, __index = superclass })
-    else 
-        return Class.create(default_properties)
-    end
+        class.super = superclass
+        metatable.__index = superclass
+    end 
+    -- Note: Should avoid this, __metatable field is reserved by Lua    
+    class.__class_metatable = metatable
+    return setmetatable(class, metatable)
+end 
+
+--- Create a new Class with default properties which have default values for its instances.
+-- after class creation, could define metatable members for this class
+-- NOTE: property members of an instance could have different values with others
+-- metatable members are derived from Class via setmetatable, they are shared in all its instances
+-- @tparam table property_members 
+function Class.create(property_members)
+    return Class.extend(property_members)
+    -- return setmetatable(initClass(property_members), MetaClass) 
 end 
 
 --- Metalize one table into a class object
