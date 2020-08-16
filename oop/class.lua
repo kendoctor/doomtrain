@@ -72,10 +72,13 @@ local function call_handler(class, ...)
 end 
 
 --- if not overrided this function, will be called here.
-function class_pairs_handler(class, k)
-    local metatable = Class.classof(class)
-    -- if class.super then 
-    --     metatable
+function class_pairs_handler(class, tbl, k)
+   assert(class ~= nil)
+   local super = class.super
+   if super then 
+        local handler =  super.__class_metatable.__pairs
+        if handler then return handler(tbl, k) end 
+   end 
 end 
 
 --- if not overrided this function, will be called here.
@@ -86,14 +89,6 @@ function object_pairs_handler(class, tbl, k)
     if super and super.__pairs then 
         return super.__pairs(tbl, k)
     end 
-    -- while class.super do
-    --     local pairs_handler = class.super.__pairs
-    --     if pairs_handler and pairs_handler ~= object_pairs_handler then 
-    --         return pairs_handler(object, k, class.super) 
-    --     end 
-    --     class = class.super
-    -- end 
-    
 end 
 
 --- Private function for init class
@@ -114,7 +109,7 @@ local function initClass(property_members, superclass)
         -- if this class overwrote __pairs, here will be not called of this class
         -- otherwise, if the class does not implement __pairs
         return object_pairs_handler(class, tbl, k)
-    end     
+    end         
     return class
 end
 
@@ -146,11 +141,14 @@ end
 
 -- Extand one class from another class with default values
 function Class.extend(property_members, superclass)
-    local metatable = { __call = call_handler, __pairs = class_pairs_handler }
+    local metatable = { __call = call_handler } -- , __pairs = class_pairs_handler 
     local class = initClass(property_members, superclass)
     if superclass then 
         class.super = superclass
         metatable.__index = superclass
+    end 
+    metatable.__pairs = function(tbl, k)
+        return class_pairs_handler(class, tbl, k)
     end 
     -- Note: Should avoid this, __metatable field is reserved by Lua    
     class.__class_metatable = metatable
