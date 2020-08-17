@@ -41,7 +41,7 @@ end
 
 --- Instance Class object
 -- This function only used internally
--- if OneClass:__init exists, variable parameters will be passed in
+-- if OneClass:__constructor exists, variable parameters will be passed in
 -- else will be automatically assigend to property members if the property exists
 --[[-- @usage
     local Dog = Class.create({ name = "default name for all newly instanced objects" })
@@ -50,8 +50,9 @@ end
     assert(black.name == white.name)
 ]]
 -- @tparam table class
----@param ... variable parameters passed into oneClass:__init(...)
-local function call_handler(class, ...)
+---@param ... variable parameters passed into oneClass:__constructor(...)
+---@todo rename default_values to props
+local function call_handler(class, default_values)
     -- @todo considering less memory usage, lazy build default property members
     -- But, this will cause instancing object a little bit slow
     local instance = setmetatable(table_copy({}, class.__property_members), class)
@@ -60,13 +61,13 @@ local function call_handler(class, ...)
     --     local default_properties 
     --     if type(...) ~= "table" then default_properties = { ... }
     -- end 
-    -- @todo add event __pre__init and __post_init
-    if class.__init then
-        instance:__init(...)
-    elseif ... ~= nil then
-        local default_values = ...
-        if type(...) ~= "table" then default_values = { ... } end      
-        table_exist_merge(instance, default_values)           
+    -- @todo add event pre or post constructor event
+    default_values = default_values or {}
+    if class.__constructor then
+        instance:__constructor(default_values)
+    else      
+        -- change exist merge to overwite merge
+        table_overwrite_merge(instance, default_values)           
     end 
     return instance
 end 
