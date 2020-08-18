@@ -1,28 +1,31 @@
 local Class = require("oop.class")
 local Event = require("facto.event")
 -- Avoid circular require
-local TrainFactory = TrainFactory or require("facto.train.trainfactory")
-local CarriageFactory = CarriageFactory or require("facto.train.carriagefactory")
-local CarriageDoorManager = CarriageDoorManager or require("facto.train.carriagedoormanager")
+local trainFactory = require("facto.train.trainfactory").getInstance()
+local carriageFactory = require("facto.train.carriagefactory").getInstance()
+local carriageDoorManager = require("facto.train.carriagedoormanager").getInstance()
 
--- local Event = require("event")
--- local Carriage = require("lib.train.carriage")
--- local CargoWagon = require("lib.train.cargowagon")
--- game = game or require("game")
+--- Train class
+-- It could be extended for special train
+-- @classmod Train
 local Train = Class.create()
+-- Train type, classes derived from Train should have a different type.
 Train.type = "common-train"
--- Train.all = Map()
 
+-- @section Constants
 Train.constants = {
     TRAIN_SURFACE_PREFIX_NAME = "train-surface-"
 }
 
+-- @section Members
+--- Constructor
 function Train:__constructor(props)
     props = props or {}
     for k,v in pairs(props) do self[k] = v end 
     self:initialize()
 end 
 
+--- Initialize the train.
 function Train:initialize()
     local tiles, lazycalls = {}, {}
 
@@ -33,10 +36,16 @@ function Train:initialize()
     self:build(tiles, lazycalls)     
 end 
 
+--- Get Id of the train.
+-- @treturn string|number
 function Train:getId()
     return self.id
 end 
 
+--- Create surface of the train.
+-- @tparam table tiles a reference table for caching tiles
+-- @tparam table lazycalls a reference table for caching closures
+-- @treturn LuaSurface
 function Train:createSurface(tiles, lazycalls)
     -- @fixme should trigger error info
     if game == nil then return end 
@@ -69,7 +78,9 @@ function Train:createSurface(tiles, lazycalls)
     return surface
 end
 
---- Build the train
+--- Build the train,such as room, doors, decoratives of ground.
+-- @tparam table tiles a reference table for caching tiles
+-- @tparam table lazycalls a reference table for caching closures
 function Train:build(tiles, lazycalls)
     local facto_carriages     
 
@@ -84,27 +95,37 @@ function Train:build(tiles, lazycalls)
     end 
 end 
 
+--- Add carriage for the train.
+-- @tparam table props carriage properties
+-- @tparam table tiles a reference table for caching tiles
+-- @tparam table lazycalls a reference table for caching closures
+-- @treturn class<Carriage>
 function Train:addCarriage(props, tiles, lazycalls)
-    local old_carriage = CarriageFactory.get(props.factoobj.unit_number)        
-    local new_carriage = CarriageFactory.create(props.factoobj.type, props)   
+    local old_carriage = carriageFactory:get(props.factoobj.unit_number)        
+    local new_carriage = carriageFactory:create(props.factoobj.type, props)   
     new_carriage:build(old_carriage, tiles, lazycalls)
     self.carriages[props.order] = new_carriage
     if old_carriage then old_carriage.train:removeCarriage(old_carriage) end
     return new_carriage
 end 
 
+--- Remove carriage from the train, when destroyed, mined, or train destroyed.
+-- If the carriage is the last one of the train, also destroy the train
+-- @tparam class<Carriage>
 function Train:removeCarriage(carriage)
     self.carriages[carriage.order] = nil
-    CarriageFactory.remove(carriage)
+    carriageFactory:remove(carriage)
     carriage:destroy()
     if next(self.carriages) == nil then self:destroy() end    
 end 
 
+--- Clear train data.
 function Train:destroy()
     if self.surface then game.delete_surface(self.surface) end 
-    TrainFactory.remove(self)
+    trainFactory:remove(self)
 end 
 
+--- Get surface of the train.
 function Train:getSurface()
     return self.surface
 end 
@@ -117,10 +138,9 @@ function Train:getSurfaceName()
     return Train.constants.TRAIN_SURFACE_PREFIX_NAME..self:getId()
 end
 
-function Train:getCarriages()
-    
-end 
-
+--- Check if the train has a valid facto object.
+-- If invalid, that means this train already outdated
+-- @treturn boolean
 function Train:isValid()
     if self.factoobj and self.factoobj.valid then return true end 
     return false 
@@ -132,7 +152,7 @@ end
 -- (at least still have another carriage left for this train(but this train actually is  a new one with a new train id) )
 -- @tparam Event e
 function Train.on_created(e)
-    TrainFactory.create(Train.type, { factoobj = e.train })
+    trainFactory:create(Train.type, { factoobj = e.train })
 end
 
 --- Event handler when player mined the train or the train was destoryed.
@@ -142,7 +162,7 @@ end
 -- @tparam Event e
 function Train.on_player_mined_or_destroyed(e)
     if e.entity and e.entity.train then
-        local carriage = CarriageFactory.get(e.entity.unit_number)
+        local carriage = carriageFactory:get(e.entity.unit_number)
         if carriage then carriage.train:removeCarriage(carriage) end 
     end
 end 
@@ -160,7 +180,7 @@ function Train.on_player_enters_train(e)
     -- check types of each vehicle which can determine this vehicle is type of rolling stock
     -- but, here, using another way, check whether the entity.train is nil or valid one
     -- local vehicle = e.entity 
-    local carriage = CarriageFactory.get(e.entity.unit_number)
+    local carriage = carriageFactory:get(e.entity.unit_number)
     if not carriage then return end 
     -- if not vehicle or not vehicle.valid then error("Invalid vehicle") end 
     if not player or not player.valid then  error("Invalid player ") end 
@@ -193,7 +213,7 @@ function Train.on_player_exits_train(e)
         -- teleport the player to the surface which the carriage stays on and nearby this carriage
         local factoobj = surfaceon.find_entity('player-port', player.position)
         if factoobj then 
-            local door = CarriageDoorManager.get(factoobj.unit_number)
+            local door = carriageDoorManager:get(factoobj.unit_number)
             if door then door.carriage:LetPlayerExitFromDoor(player, door) end 
         end 
     end 
