@@ -1,11 +1,15 @@
 local Class = require("oop.class")
 local Event = require("facto.event")
-local CarriageFactory = CarriageFactory or require("facto.train.carriagefactory")
-local CarriageDoorManager = require("facto.train.carriagedoormanager")
+local carriageFactory = require("facto.train.carriagefactory").getInstance()
+local carriageDoorManager = require("facto.train.carriagedoormanager").getInstance()
 
+--- Carriage base class which could be extended for special carriages.
+-- @classmod Carriage
 local Carriage = Class.create()
+-- Carriage type, classes derived from Carriage should have a different type.
 Carriage.type = "rolling-stock"
 
+--- Constructor.
 function Carriage:__constructor(props)
     props = props or {}
     props.doors = props.doors or {}
@@ -13,9 +17,14 @@ function Carriage:__constructor(props)
     self:initialize()
 end 
 
+--- Initialization for carriage.
 function Carriage:initialize()
 end 
 
+--- Build carriage such room, doors.
+-- @tparam class<Carriage> old_carriage
+-- @tparam table tiles a reference table for caching tiles
+-- @tparam table lazycalls a reference table for caching closures
 function Carriage:build(old_carriage, tiles, lazycalls)
     if old_carriage then 
         self:clone(old_carriage)
@@ -27,6 +36,9 @@ function Carriage:build(old_carriage, tiles, lazycalls)
     end 
 end 
 
+--- Build the room which is mainly for building stuff.
+-- @tparam table tiles a reference table for caching tiles
+-- @tparam table lazycalls a reference table for caching closures
 function Carriage:buildRoom(tiles, lazycalls)
     local area = self:getBuildingArea()    
     
@@ -49,26 +61,26 @@ function Carriage:buildRoom(tiles, lazycalls)
     end
 end 
 
---- Create doors of the carriage for players to exit out.
--- @tparam table tiles a reference table for holding all tiles data of the train, since consider to surface.set_tiles only once
+--- Build doors of the carriage for players to exit out.
+-- @tparam table tiles a reference table for caching tiles
+-- @tparam table lazycalls a reference table for caching closures
 function Carriage:buildDoors(tiles, lazycalls)
     local area = self:getBuildingArea()
     local surface = self:getTrainSurface()    
    
     for _, x in pairs( { area.left_top.x - 1, area.right_bottom.x + 0.5 } ) do        
         self:createDoor({ carriage = self }, { x = x, y = area.left_top.y + ((area.right_bottom.y - area.left_top.y) * 0.5) }, tiles, lazycalls)
-        -- local door = Door:new({ carriage = self })
-        -- door:create(tiles, lazyCalls, { x = x, y = area.left_top.y + ((area.right_bottom.y - area.left_top.y) * 0.5) })        
-        -- lazyCalls[#lazyCalls+1] = function()
-        --     self.doors[door:getUnitNumber()] = door
-        --     -- @todo before carriage removed from table, should remove its door in this table
-        --     self.train.trains.doors[door:getUnitNumber()] = door
-        -- end 
     end
 end 
 
+--- Buildd carriage door.
+-- @tparam table props door properties
+-- @tparam LuaPosition position door position
+-- @tparam table tiles a reference table for caching tiles
+-- @tparam table lazycalls a reference table for caching closures
+-- @treturn class<CarriageDoor>
 function Carriage:createDoor(props, position, tiles, lazycalls)
-    local door, addedcall = CarriageDoorManager.createLazyAdded(props)
+    local door, addedcall = carriageDoorManager:createLazyAdded(props)
     door:build(position, tiles, lazycalls, function() 
         self.doors[tostring(door:getId())] = door
         addedcall()
@@ -76,26 +88,24 @@ function Carriage:createDoor(props, position, tiles, lazycalls)
     return door
 end 
 
+--- Clone door from the old surface area.
+-- @tparam class<CarriageDoor> source_door
+-- @tparam table props properties of the door
 function Carriage:createDoorByClone(source_door, props)
-    local door = CarriageDoorManager.create(props)
+    local door = carriageDoorManager:create(props)
     self.doors[tostring(door:getId())] = door
-    CarriageDoorManager.remove(source_door)
+    carriageDoorManager:remove(source_door)
 end 
 
+--- Clone carriage from the old.
+-- @tparam class<Carriage> old_carriage
 function Carriage:clone(old_carriage)
     local restore = function(e)
+        -- @todo more accurate and flexiable is to check unit_number in CarriageDoorManager
         if e.source.name ~= "player-port" then return end
         local old_doors = old_carriage.doors
         for k, door in pairs(old_doors) do 
-            if door.factoobj == e.source then 
-                self:createDoorByClone(door, { factoobj = e.destination, carriage = self })
-                -- -- local new_door = Door:new({ builtin_entity = e.destination, carriage = self })
-                -- self.doors[new_door:getUnitNumber()] = new_door
-                -- -- @todo before carriage removed from table, should remove its door in this table
-                -- self.train.trains.doors[new_door:getUnitNumber()] = new_door
-                -- -- clear old door
-                -- self.train.trains.doors[e.source.unit_number] = nil
-            end 
+            if door.factoobj == e.source then self:createDoorByClone(door, { factoobj = e.destination, carriage = self }) end 
         end         
     end 
     Event.on(defines.events.on_entity_cloned, restore)
@@ -103,6 +113,8 @@ function Carriage:clone(old_carriage)
     Event.remove(defines.events.on_entity_cloned, restore)
 end 
 
+--- Clone area of the source carraige.
+-- @tparam class<Carriage> source_carriage
 function Carriage:cloneArea(source_carriage)
     print("clone carriage area")
     local source_area = source_carriage:getClonedArea()
@@ -142,6 +154,7 @@ end
 
 --- Let player exit out the carriage when the player touches the door
 -- @tparam LuaPlayer player
+-- @tparam class<CarriageDoor>
 function Carriage:LetPlayerExitFromDoor(player, door)
     local surface = self:getSurfaceOn()
     local door_factoobj = door.factoobj
@@ -172,7 +185,8 @@ function Carriage:getClonedArea()
     return { { area.left_top.x-2, area.left_top.y }, { area.right_bottom.x+2, area.right_bottom.y } }
 end
 
---- Convenient function for get the surface of the train which this carriage is attached.
+--- Convenient function for getting the surface of the train which this carriage is attached.
+-- @treturn LuaSurface
 function Carriage:getTrainSurface()
     return self.train:getSurface()
 end 
@@ -192,52 +206,25 @@ function Carriage:getTrain()
     return self.train
 end 
 
+--- Clear carriage data.
 function Carriage:destroy()
     for id, door in pairs(self.doors) do 
         self.doors[id] = nil
-        CarriageDoorManager.remove(door)
+        carriageDoorManager:remove(door)
         door:destroy() 
     end 
 end 
 
+--- Get id of the carriage.
+-- @treturn string|number
 function Carriage:getId()
     return tostring(self.factoobj.unit_number)
 end 
 
+--- Check if this carriage is a locomotive.
+-- @treturn boolean
 function Carriage:isLocomotive()
     return false 
-end 
-
-function Carriage.load()
-    for key, value in pairs(Carriage.all) do 
-        local class = CarriageFactory.getCarriageClass(value.factoobj.type)
-        class:__metalize(value)
-    end 
-end 
-
--- serialize, normally when system save, notify all serializable ROOT objects to serialized itself
--- but in facto, there's no this notification mechanism. if this ROOT objec want to save itself, should pass a reference of itself to 
--- global[key] = one_serializable_root_object.
--- NOTE: this only can be done after on_load event triggered, if it will be triggered
-function Carriage.setup(class, guid)
-    assert(Carriage.guid == guid)
-    assert(Carriage == class)
-    return Carriage.all
-end
-
--- deseralize, in facto, serialized data only store in global.
--- before script.on_load event tick ended, you can not change data inside which will cause CRC desync problems
--- except attaching metatable for these plain data
-function Carriage.metalize(class, guid, data)
-    assert(Carriage.guid == guid)
-    -- assert(Carriage == class)
-    if type(data) ~= "table" then 
-        -- if code changed, new class added, could we using lazy method to resetup the data ?
-        -- for example, resetup in on_loaded event
-        return 
-    end 
-    Carriage.all = Map:__metalize(data)
-    Carriage.load()    
 end 
 
 -- @export
