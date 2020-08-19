@@ -28,6 +28,8 @@ function GameManager.setup(cfg)
     GameManager.register(class)    
     class = require("facto.train.carriagedoormanager")
     GameManager.register(class)
+    class = require("facto.exchanger.exchangerfactory")
+    GameManager.register(class)
 end 
 
 --- Register persisted class singleton.
