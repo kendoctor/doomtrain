@@ -94,6 +94,7 @@ end
 function Carriage:createDoorByClone(source_door, props)
     local door = carriageDoorManager:create(props)
     self.doors[tostring(door:getId())] = door
+    self.doors[tostring(source_door:getId())] = nil
     carriageDoorManager:remove(source_door)
 end 
 
@@ -212,7 +213,7 @@ function Carriage:destroy()
         self.doors[id] = nil
         carriageDoorManager:remove(door)
         door:destroy() 
-    end 
+    end     
 end 
 
 --- Get id of the carriage.
