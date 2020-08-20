@@ -4,8 +4,9 @@ local AbstractFactory = require("facto.abstractfactory")
 --- Carriage factory for creating different types of carriages, such as locomotive, cargo wagon, etc.
 -- Centralized management of carriage instances for facto data serialization
 -- @classmod CarriageFactory
-CarriageFactory = Class.extend({}, AbstractFactory)
+local CarriageFactory = Class.extend({}, AbstractFactory)
 
+-- @section metatable members
 --- Remove carriage from cache.
 -- Check if the same id carriage already replaced before removed 
 -- @tparam class<Carriage> carriage
@@ -20,17 +21,21 @@ function CarriageFactory:setup()
     local class = require("facto.train.carriage")
     self:register(class.type, class)
     class = require("facto.train.cargowagon")
-    self:register(class.type, class)    
+    self:register(class.type, class)   
+    class = require("facto.train.locomotive")
+    self:register(class.type, class)
+    class = require("facto.train.fluidwagon")
+    self:register(class.type, class)   
 end 
 
---- Return a global unique key
+--- Return a global unique key.
 -- @treturn string
 function CarriageFactory.guid()
     return "facto.train.carriagefactory"
 end 
 
 local instance 
---- Get singleton instance
+--- Get singleton instance.
 function CarriageFactory.getInstance()
     if instance == nil then 
        instance = CarriageFactory()
