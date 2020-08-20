@@ -26,6 +26,8 @@ function CarriageFactory:setup()
     self:register(class.type, class)
     class = require("facto.train.fluidwagon")
     self:register(class.type, class)   
+    class = require("facto.train.artillerywagon")
+    self:register(class.type, class)   
 end 
 
 --- Return a global unique key.
