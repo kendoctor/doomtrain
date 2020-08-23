@@ -30,6 +30,8 @@ function GameManager.setup(cfg)
     GameManager.register(class)
     class = require("facto.exchanger.exchangerfactory")
     GameManager.register(class)
+    class = require("facto.player.playerfactory")
+    GameManager.register(class)
 end 
 
 --- Register persisted class singleton.

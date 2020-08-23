@@ -16,6 +16,11 @@ local AbstractFactory = Class.create()
 function AbstractFactory:__constructor()
     self.registered = {}
     self.instanced = {}
+    self:initialize()
+end 
+
+--- Initialization
+function AbstractFactory:initialize()
 end 
 
 --- Register one class with an unique key.
@@ -77,6 +82,7 @@ end
 -- @tparam string guid a unique key for factory registration in GameManager
 -- @tparam table data a table storing data loaded from save
 function AbstractFactory:load(guid, data)
+    -- if data is not table, that means the game data already broken
     self.instanced = data.instanced
     for id, data in pairs(self.instanced) do 
         local class = self:getClass(data.type)
