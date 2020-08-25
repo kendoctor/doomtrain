@@ -25,11 +25,11 @@ Basic Functionality
 3. Serialization
 4. Extension Plugin
 
-### Energy 
+## Energy 
 
 Energy, the strength and vitality required for a player's sustained physical or mental activity.
 
-#### Energy Consumption
+### Energy Consumption
 
 One player needs energy to perform actions, such as moving, mining, crafting, attacking, building, etc. And even when players do nothing, energy also will be consumed for basic physiological needs.
 
@@ -41,17 +41,60 @@ One player needs energy to perform actions, such as moving, mining, crafting, at
 
 Players need to eat food or take energy drink to recover energy. Eating or drinking will not immediately recover energy. There's a digesting process for eating or drinking which will recover energy in a certain period of time.
 
+#### Food And Drink
+
+If players are lack of energy and feel thirsty, they need to eat and drink for status recovery. 
+
+1. Hungriness, the desire for the player eating food
+2. Thirsty, the desire for the player drinking
+
+The player has limited capacity for eating and drinking. When full, the player can not eat or drink any more, until food digested or drink absorbed.
+
+### Digesting
+
+Food or drink need a certain period of time to digest, finally transformed into energy.
+
+1. Drinking enough will immediately solve the thirsty problem. 
+2. Eating enough will immediately solve the hungry problem.
+3. Drinking and eating enough will not immediately solve energy lacking problem. Food and drink need a digesting process to transform into energy.
+4. Not all drinks have energy supply.
+
+### Hungry Phases
+
+| Hungry Phase  | State In Percentage   | Effects               |
+|-------------- | --------------------  |---------------------  |
+| Stuffed       |   98%-100%            |    Moving Speed -, easy to raise weight |
+| Full          |   80%-98%             |    Stamina Recovery +  |
+| Normal        |   30%-80%             |    None               |
+| Hungry        |   5%-30%              |    Stamina Recovery -, Energy Consumption + |         
+| Starving      |   0% - 5%             |    Extra Energy Consumption, Losing Health | 
+
+### Thirsty Phases
+
+| Thirsty Phase  | State In Percentage   | Effects               |
+|-------------- | --------------------  |---------------------  |
+| Stuffed       |  98%-100%             |  Moving Speed -, easy to lose weight      |
+| Full          |  80%-98%              |  Stamina Recovery +      |
+| Normal        |   30%-80%             |  None         |
+| Thirsty       |   5%-30%              |  Stamina Recovery -, Energy Consumption + |
+| Polydipsia    |    0% - 5%   |   Extra Energy Consumption, Losing Health |
+
+
 ### Energy Phases
 
 The amount of energy possessed by the player will determine which phase is in at that time. Different phases will give different effects to the player. 
 
 | Energy Phase  | Amount In Percentage  | Effects            |
 |-------------- | --------------------  |---------------------|
-| Vigorous      |   90%-100%            |    Luck and Efficient for actions               |
-| Common        |   50%-80%             |    No debuff or buff            |
-| Tired         |   20%-50%             |    Moving is slow   |
+| Vigorous      |   90%-100%            |    Luck and efficient for actions               |
+| Normal        |   50%-80%             |    No debuff or buff            |
+| Tired         |   20%-50%             |    Moving is slow, inefficient for actions  |
 | Exhausted     |   5%-20%              |    Moving is very slow, losing health slowly   |
 | Unconscious   |   0%-5%               |    Can do nothing, losing health quickly  |
+
+
+
+
 
 
 
