@@ -2,6 +2,70 @@
 
 A factorio mod based game, players need to learn how to live on a long way, struggling with food, water, coldness, hotness and biters attacks.
 
+
+## Features to do
+
+> Before working on scenario's story, first build a basic game architecture.
+
+Functional lib decoupled into components.
+
+### GameManger Component
+
+According the configuration
+
+1. Import Modules
+2. Manage Serialization Classes
+
+### Player Component
+
+Basic Functionality
+
+1. State Updating
+2. Player creation 
+3. Serialization
+4. Extension Plugin
+
+### Energy 
+
+Energy, the strength and vitality required for a player's sustained physical or mental activity.
+
+#### Energy Consumption
+
+One player needs energy to perform actions, such as moving, mining, crafting, attacking, building, etc. And even when players do nothing, energy also will be consumed for basic physiological needs.
+
+1. Everlasting consumption for basic physiological needs.
+2. One-time consumption, such as mining a rock or crafting an item.
+3. Continuous consumption in a period of time, such as walking or running.
+
+### Energy Recovery
+
+Players need to eat food or take energy drink to recover energy. Eating or drinking will not immediately recover energy. There's a digesting process for eating or drinking which will recover energy in a certain period of time.
+
+### Energy Phases
+
+The amount of energy possessed by the player will determine which phase is in at that time. Different phases will give different effects to the player. 
+
+| Energy Phase  | Amount In Percentage  | Effects            |
+|-------------- | --------------------  |---------------------|
+| Vigorous      |   90%-100%            |    Luck and Efficient for actions               |
+| Common        |   50%-80%             |    No debuff or buff            |
+| Tired         |   20%-50%             |    Moving is slow   |
+| Exhausted     |   5%-20%              |    Moving is very slow, losing health slowly   |
+| Unconscious   |   0%-5%               |    Can do nothing, losing health quickly  |
+
+
+
+### Gui Component 
+
+1. Style Selector
+2. Builder mode
+3. Gui type abstraction
+4. Data binding
+5. Event 
+
+### Event Component
+
+
 ## 游戏内容
 
 星球上的人类，由于过度的工业和自动化导致了整个星球的严重污染，空气，饮水，土壤。气候被破坏，变化无常。
@@ -33,14 +97,4 @@ A factorio mod based game, players need to learn how to live on a long way, stru
     基本构思，通过on_tick事件实现定时器功能，目前还不清楚是否存在内置定时器或者多线程调用
 2. ...
 
-## TODO List
 
-> Train Module Class
-
-1. When players enter the train from one carriage, should be teleported nearby the door of the carriage
-2. When players exit out the carriage from one door, should be teleported to the surface which the carriage stays on and nearby this carriage
-3. When new train created(disconnected or connected another train), the building layout in carriages maybe disordered. Needs a solution for this.
-4. When the carriages destroyed, players in these carriages should be repositioned to proper places.
-5. Carriages can be mined or not , can be built or not, the behavior should be configurable.
-6. Different types of carriage creation.
-7. The performance about train creation and destruction refactoring.
