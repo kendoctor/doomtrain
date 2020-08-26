@@ -1,10 +1,19 @@
 local Class = require("oop.class")
 local Event = require("facto.event")
 local playerFactory = require("facto.player.playerfactory").getInstance()
+local stateUpdaterFactory = require("facto.player.stateupdaterfactory").getInstance()
 
 require("utils")
 local Player = Class.create()
 Player.type = "player"
+
+Player.EnergyPhase = {
+    Vigorous = 1,
+    Normal = 2,
+    Tired = 3,
+    Exhausted = 4,
+    Unconscious = 5
+}
 
 function Player:__constructor(props)
     self.props = props.factoobj
@@ -13,27 +22,30 @@ function Player:__constructor(props)
     -- self.last_time_joined (game tick)
     -- self.time_joined
     self.max_health = 100
-    self.energy = 416
-    self.max_energy = 416
-    self.max_stamina = 100
+    self.energy = 4160
+    self.max_energy = 4160
+    self.stamina = 0
+    self.max_stamina = 200
+    self.brainpower = 0
+    self.max_brainpower = 100
     self.eating_capacity = 100
     self.drinking_capacity = 100
     self.digesting_queque = {}
     self.state_update_queue = {}
+    self.state_updaters = {}
+    self.runningSpeedModifiers = {}
+
+    -- self.last_move_tick = nil
     self:initialize()
 end 
 
 function Player:initialize()
-    local basic_energy_consumption = {
-        cycle_ticks = 60,
-        update = function() 
-            self:decEnergy(1)
-            debug('updated')
-        end,
-        update_cycles = 0,
-        updated_cycles = 0
-    }
-    table.insert(self.state_update_queue, basic_energy_consumption)
+    local updater = stateUpdaterFactory:create("physiological-needs-updater")
+    table.insert(self.state_updaters, updater)
+    updater = stateUpdaterFactory:create("stamina-recovery-updater")
+    table.insert(self.state_updaters, updater)
+    updater = stateUpdaterFactory:create("running-consumption-updater")
+    table.insert(self.state_updaters, updater)
 end 
 
 function Player:getId()
@@ -43,45 +55,105 @@ end
 function Player:isValid()
 end 
 
-function Player:decEnergy(amout)
-    self.energy = self.energy - amout 
-    if self.energy < 0 then self.energy = 0 end
-    return self.energy
+function Player:getRunningSpeed()
 end 
 
-function Player:incEnergy(amout)
-    self.energy = self.energy + amout
+function Player:getRunningSpeedModifier()
+end 
+
+function Player:getCraftingSpeedModifier()
+end 
+
+function Player:getMiningSpeedModifier()
+end 
+
+function Player:isMoving()
+    return self.factoobj.walking_state.walking
+end 
+
+--- Decrease amount of energy.
+-- @tparam number amount
+-- @treturn number actual decreased amount
+function Player:decEnergy(amount)
+    local origin = self.energy
+    self.energy = self.energy - amount 
+    if self.energy < 0 then self.energy = 0 end
+    return origin - self.energy
+end 
+
+--- Increase amount of energy.
+-- @tparam number amount
+-- @treturn number actual increased amount
+function Player:incEnergy(amount)
+    local origin = self.energy
+    self.energy = self.energy + amount        
     if self.energy > self.max_energy then self.energy = self.max_energy end 
-    return self.energy
+    return self.energy - origin
+end 
+
+function Player:getEnergyPhase()
 end 
 
 function Player:getEnergyRatio()
     return self.energy/self.max_energy
 end 
 
+--- Decrease amount of stamina.
+-- @tparam number amount
+-- @treturn number actual decreased amount
+function Player:decStamina(amount)
+    local origin = self.stamina
+    self.stamina = self.stamina - amount 
+    --- raise event, stamina is over consumed
+    if self.stamina < 0 then self.stamina = 0 end
+    return origin - self.stamina
+end 
+
+--- Increase amount of stamina.
+-- @tparam number amount
+-- @treturn number actual increased amount
+function Player:incStamina(amount)
+    local origin = self.stamina
+    self.stamina = self.stamina + amount        
+    if self.stamina > self.max_stamina then self.stamina = self.max_stamina end 
+    return self.stamina - origin
+end 
+
+function Player:isStaminaEmpty()
+    return self.stamina == 0
+end 
+
+function Player:isStaminaFull()
+    return self.stamina == self.max_stamina
+end 
+
+function Player:isEnergyEmpty()
+    return self.energy == 0
+end 
+
+function Player:getStaminaRatio()
+    return self.stamina/self.max_stamina
+end
+
 function Player:updateStatus()
 
 end 
 
-function Player:updateByQueue(game_tick)
+function Player:updateByQueue(game_tick, player)
     -- frequency , lasting_ticks
     -- if current update will let later update unneeded?
-    for key,state_update in pairs(self.state_update_queue) do 
-        if game_tick % state_update.cycle_ticks == 0 then 
-            if state_update.update_cycles == 0 or (state_update.update_cycles - state_update.updated_cycles) > 0 then 
-                --- if update return true, then remove this update
-                state_update.update()
-                state_update.updated_cycles = state_update.updated_cycles + 1
-            else
-                self.state_update_queue[key] = nil
+    for key, updater in pairs(self.state_updaters) do 
+        if game_tick % updater.cycle_ticks == 0 then 
+            updater:update(game_tick, player)
+            if not updater:isContinued() then 
+                self.state_updaters[key] = nil
             end 
         end 
     end 
 end 
 
-
 function Player:update(game_tick)
-    self:updateByQueue(game_tick)
+    self:updateByQueue(game_tick, self)
     --- @todo raise event for extension to do extra work
 
     local left = self.factoobj.gui.left
@@ -89,34 +161,9 @@ function Player:update(game_tick)
     if not p  then p = left.add({ name = "p1", type="progressbar" }) end 
     p.value = self:getEnergyRatio()
 
-    --- update state 
-    --- trigger events, such die, hungry...
-    -- local p
-    
-    -- p[cycle_ticks] = {}
-
-    -- for cycle_ticks, updates in pairs(state_update_table) do 
-    --     if game.tick % cycle_ticks == 0 then 
-    --         for _, update in pairs(updates) do 
-
-    --         end 
-    --     end 
-    -- end 
-
-    --- for one state : energy, health, stamina
-    --- mutiple state 
-    --- permanent 
-    -- local c = { cycle_ticks = 10, consumption = 10, cycle_times = 100, cycle_finished = 1 }
-    -- if game.tick % c.tick == 0 then 
-    --     -- energy = energy - c.consumption could be negative
-    -- end 
-    
-    -- tick, consumption
-    -- constantly consume energy ,  basic energy consuming
-    -- constantly recovery energy , food digesting
-    -- action consume energy, for example, walking, mining, running, attacking
-    -- tick action, and status action
-    
+    local p2 = left["p2"] 
+    if not p2  then p2 = left.add({ name = "p2", type="progressbar" }) end 
+    p2.value = self:getStaminaRatio()
 
 end 
 
@@ -156,15 +203,9 @@ end
 
 function Player.on_created(e)
     debug("created")
-    --- player meta data of this map 
-    --- player meta data of the new game 
-    --- Should be nil, if the game create a new one
-    -- local player = playerFactory:get(e.player_index)
-    -- if player then 
-    -- end 
     local factoobj = game.players[e.player_index]
     assert(factoobj ~= nil)
-    -- should be valid player ? maybe still not join the game.
+    -- should be valid player ? maybe still not join the game.    
     playerFactory:create("player", { factoobj = factoobj })
 end 
 
@@ -179,10 +220,37 @@ end
 function Player.on_built()
 end 
 
+local last_move_tick 
+function Player.on_moving(e)
+    -- -- last_move_tick = last_move_tick or e.tick
+    -- -- debug(e.tick - last_move_tick)
+    -- -- last_move_tick = e.tick
+    -- local player = playerFactory:get(e.player_index)
+    -- if player then 
+    --     player.last_move_tick = e.tick
+    -- end 
+end 
+
 Event.on(defines.events.on_player_joined_game, Player.on_joined)
 Event.on(defines.events.on_player_created, Player.on_created)
 Event.on(defines.events.on_player_left_game, Player.on_left)
-
+Event.on(defines.events.on_player_changed_position, Player.on_moving)
 
 -- @export
 return Player
+
+
+-- t = current time
+-- b = start value
+-- c = change in value
+-- d = duration
+
+--  function (float time, float startValue, float change, float duration) {
+--      time /= duration / 2;
+--      if (time < 1)  {
+--           return change / 2 * time * time + startValue;
+--      }
+
+--      time--;
+--      return -change / 2 * (time * (time - 2) - 1) + startValue;
+--  };
