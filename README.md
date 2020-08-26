@@ -41,16 +41,34 @@ One player needs energy to perform actions, such as moving, mining, crafting, at
 
 Players need to eat food or take energy drink to recover energy. Eating or drinking will not immediately recover energy. There's a digesting process for eating or drinking which will recover energy in a certain period of time.
 
-#### Food And Drink
+#### Food And Drink(The Eaten)
 
 If players are lack of energy and feel thirsty, they need to eat and drink for status recovery. 
 
 1. Hungriness, the desire for the player eating food
 2. Thirsty, the desire for the player drinking
 
-The player has limited capacity for eating and drinking. When full, the player can not eat or drink any more, until food digested or drink absorbed.
+> Food feature
+
+Food sometimes will be some type of drink.
+
+1. Energy to get after digested
+2. Digesting time in ticks, the time in which the food will be fully digested
+3. Weight(This feature will be developed in later)
+4. Amount of thirstiness to be solved
+
+> Drink feature
+
+Drink sometimes will be some type of food which gives energy.
+
+1. Energy to get
+2. If this drink has energy to get, will need a digesting process.
+3. Weight
+4. Amount of thirstiness to be solved
 
 ### Digesting
+
+The player has limited capacity for eating and drinking. When full, the player can not eat or drink any more, until food digested or drink absorbed.
 
 Food or drink need a certain period of time to digest, finally transformed into energy.
 
@@ -61,6 +79,8 @@ Food or drink need a certain period of time to digest, finally transformed into 
 
 ### Hungry Phases
 
+Different phases will give different effects to the player. 
+
 | Hungry Phase  | State In Percentage   | Effects               |
 |-------------- | --------------------  |---------------------  |
 | Stuffed       |   98%-100%            |    Moving Speed -, easy to raise weight |
@@ -70,6 +90,8 @@ Food or drink need a certain period of time to digest, finally transformed into 
 | Starving      |   0% - 5%             |    Extra Energy Consumption, Losing Health | 
 
 ### Thirsty Phases
+
+Different phases will give different effects to the player. 
 
 | Thirsty Phase  | State In Percentage   | Effects               |
 |-------------- | --------------------  |---------------------  |
@@ -82,7 +104,7 @@ Food or drink need a certain period of time to digest, finally transformed into 
 
 ### Energy Phases
 
-The amount of energy possessed by the player will determine which phase is in at that time. Different phases will give different effects to the player. 
+The amount of energy sustained by the player will determine which phase is in at that time. Different phases will give different effects to the player. 
 
 | Energy Phase  | Amount In Percentage  | Effects            |
 |-------------- | --------------------  |---------------------|
