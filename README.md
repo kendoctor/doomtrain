@@ -114,11 +114,23 @@ The amount of energy sustained by the player will determine which phase is in at
 | Exhausted     |   5%-20%              |    Moving is very slow, losing health slowly   |
 | Unconscious   |   0%-5%               |    Can do nothing, losing health quickly  |
 
+### Stamina And Brainpower
 
+Stamina and brainpower are two energy pools for the player's incoming behaviors. Energy will be not consumed directly by behaviors. When stamina or brainpower are drained, the energy will flow into pools in a certain amount and speed until energy is empty.
 
+> Stamina(Fatigue)
 
+* Pool capacity, the max stamina 
+* Recovery speed(amount in tick)
 
+Here, stamina is the energy that allow the player to sustain physical effort for long period of time. It is differentiated from Brainpower.
 
+> Brainpower
+
+* Pool capacity, the max brainpower
+* Recovery speed
+
+Brainpower is the energy that allow the player to sustain mental effort for long period of time.
 
 ### Gui Component 
 
