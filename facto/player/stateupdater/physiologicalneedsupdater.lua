@@ -16,7 +16,11 @@ end
 
 function PhysiologicalNeeds:update(game_tick, player)
     player = player or self.player
-    player:decEnergy(self.energy_consumption)
+    if not player:isEnergyEmpty() then 
+        player:decEnergy(self.energy_consumption)
+    elseif not player:isStaminaEmpty() then
+        player:decStamina(self.energy_consumption)
+    end 
 end 
 
 -- @export

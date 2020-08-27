@@ -32,6 +32,10 @@ function StateUpdaterFactory:setup()
     self:register(class.type, class)
     class = require("facto.player.stateupdater.runningconsumptionupdater")
     self:register(class.type, class)
+    class = require("facto.player.stateupdater.energyphaseupdater")
+    self:register(class.type, class)
+    class = require("facto.player.stateupdater.fooddigestingupdater")
+    self:register(class.type, class)
 end 
 
 function StateUpdaterFactory:init(guid, storage)  

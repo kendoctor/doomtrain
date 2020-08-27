@@ -59,7 +59,7 @@ end
 Event.on_nth_tick(1, function() 
     if instance then 
         for _,player in pairs(instance.online) do 
-            player:update(game.tick)
+            if player:hasCharacter() then  player:update(game.tick) end 
         end 
     end 
 end)

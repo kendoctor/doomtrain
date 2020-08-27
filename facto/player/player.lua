@@ -1,5 +1,7 @@
 local Class = require("oop.class")
 local Event = require("facto.event")
+local StateModifiers = require("facto.player.statemodifiers")
+-- local StatePhases = require("facto.player.statephases")
 local playerFactory = require("facto.player.playerfactory").getInstance()
 local stateUpdaterFactory = require("facto.player.stateupdaterfactory").getInstance()
 
@@ -7,13 +9,15 @@ require("utils")
 local Player = Class.create()
 Player.type = "player"
 
-Player.EnergyPhase = {
-    Vigorous = 1,
-    Normal = 2,
-    Tired = 3,
-    Exhausted = 4,
-    Unconscious = 5
-}
+-- Player.
+
+-- {
+--     Vigorous = { 0, 5, function() end },
+--     Normal = 2,
+--     Tired = 3,
+--     Exhausted = 4,
+--     Unconscious = 5
+-- }
 
 function Player:__constructor(props)
     self.props = props.factoobj
@@ -30,10 +34,15 @@ function Player:__constructor(props)
     self.max_brainpower = 100
     self.eating_capacity = 100
     self.drinking_capacity = 100
-    self.digesting_queque = {}
-    self.state_update_queue = {}
+    self.eatens = {}
+
+    
     self.state_updaters = {}
-    self.runningSpeedModifiers = {}
+
+    self.runningSpeedModifiers = StateModifiers()
+    self.craftingSpeedModifiers = {}
+    self.miningSpeedModifiers = {}
+
 
     -- self.last_move_tick = nil
     self:initialize()
@@ -46,10 +55,19 @@ function Player:initialize()
     table.insert(self.state_updaters, updater)
     updater = stateUpdaterFactory:create("running-consumption-updater")
     table.insert(self.state_updaters, updater)
+    updater = stateUpdaterFactory:create("energy-phase-updater")
+    table.insert(self.state_updaters, updater)
+    updater = stateUpdaterFactory:create("food-digesting-updater")
+    table.insert(self.state_updaters, updater)
 end 
 
 function Player:getId()
     return self.id
+end 
+
+function Player:hasCharacter()
+    if not self.factoobj or not self.factoobj.character then return false end 
+    return true
 end 
 
 function Player:isValid()
@@ -69,6 +87,15 @@ end
 
 function Player:isMoving()
     return self.factoobj.walking_state.walking
+end 
+
+function Player:udpateEnergyPhase()
+    local previous_phase 
+    local current_phase
+    if previous_phase == nil or previous_phase ~=  current_phase then 
+        current_phase:update()
+    end 
+    previous_phase = current_phase
 end 
 
 --- Decrease amount of energy.
@@ -165,6 +192,9 @@ function Player:update(game_tick)
     if not p2  then p2 = left.add({ name = "p2", type="progressbar" }) end 
     p2.value = self:getStaminaRatio()
 
+    local b1 = left["b1"] 
+    if not b1  then b1 = left.add({ name = "b1", type="button", caption = "eat" }) end 
+
 end 
 
 function Player:getHealth()
@@ -176,6 +206,13 @@ end
 -- function Player:cons
 
 function Player:eat(food)
+    food = {
+        energy = 100,
+        digest_time = 1000
+    }
+
+    debug("eat food")
+    table.insert(self.eatens, { food = food, absorbed_energy = 0 })
     -- Action
     -- Food : energy, digesting time
     -- raise event 
@@ -199,12 +236,16 @@ function Player.on_joined(e)
     local factoobj = game.players[e.player_index]
     assert(factoobj ~= nil)
     playerFactory:join(factoobj)
+    debug(factoobj.character ~= nil)
+    debug(factoobj.connected)
 end 
 
 function Player.on_created(e)
     debug("created")
     local factoobj = game.players[e.player_index]
     assert(factoobj ~= nil)
+    debug(factoobj.character ~= nil)
+    debug(factoobj.connected)
     -- should be valid player ? maybe still not join the game.    
     playerFactory:create("player", { factoobj = factoobj })
 end 
@@ -214,6 +255,7 @@ function Player.on_left(e)
     -- debug(serpent.block( game.players[e.player_index].valid))
     local factoobj = game.players[e.player_index]
     assert(factoobj ~= nil)
+    debug(factoobj.character ~= nil)
     playerFactory:left(factoobj)
 end 
 
@@ -235,7 +277,15 @@ Event.on(defines.events.on_player_joined_game, Player.on_joined)
 Event.on(defines.events.on_player_created, Player.on_created)
 Event.on(defines.events.on_player_left_game, Player.on_left)
 Event.on(defines.events.on_player_changed_position, Player.on_moving)
-
+Event.on(defines.events.on_player_respawned, function(e)
+    local factoobj = game.players[e.player_index]
+    debug("respawned")
+    debug(factoobj.character ~= nil)
+end)
+Event.on(defines.events.on_gui_click, function(e) 
+    local player = playerFactory:get(e.player_index)
+    player:eat()
+end)
 -- @export
 return Player
 
