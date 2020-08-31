@@ -1,18 +1,18 @@
-require "utils"
 local Class = require("oop.class")
-local Event = require("facto.event")
 
 --- Manage the game objects and resources.
 -- @classmod GameManager
 local GameManager = Class.create()
-local persisted_classes = {}
+local services
+local config 
 
--- GameManager.persisted_classes = persisted_classes
--- config : new game cfg, and cfg could be changed in game
---- modules should be registered 
---- modules could be registered lately
---- modules registered according to a cfg set
-function GameManager.setup(cfg)
+function GameManager:__constructor(cfg)
+    services = {}
+    config = cfg
+end 
+
+--- Setup game manager.
+function GameManager:setup()
 --- modules need to be registered
 --- modules need only to be required
     -- for _, module  in pairs(cfg.modules)  
@@ -22,44 +22,47 @@ function GameManager.setup(cfg)
     --         GameManager.register(class.guid(), class)
     --     end 
     -- end 
-    local class = require("facto.train.trainfactory")
-    GameManager.register(class)
-    class = require("facto.train.carriagefactory")
-    GameManager.register(class)    
-    class = require("facto.train.carriagedoormanager")
-    GameManager.register(class)
-    class = require("facto.exchanger.exchangerfactory")
-    GameManager.register(class)
-    class = require("facto.player.playerfactory")
-    GameManager.register(class)
+    local class = require("facto.event")
+    self.event = self:register(class)
+    -- class = require("facto.train.trainfactory")
+    -- self:register(class)
+    -- class = require("facto.train.carriagefactory")
+    -- self:register(class)    
+    -- class = require("facto.train.carriagedoormanager")
+    -- self:register(class)
+    -- class = require("facto.exchanger.exchangerfactory")
+    -- self:register(class)
+    -- class = require("facto.player.playerfactory")
+    -- self:register(class)
 end 
 
---- Register persisted class singleton.
-function GameManager.register(class)
-    -- assert(Class.isclass(class))    
-    persisted_classes[class.guid()] = class.getInstance()
+--- Register services
+function GameManager:register(class)
+    local instance = class.getInstance()
+    services[class.guid()] = instance
+    return instance
 end 
 
 --- Invoked when script.on_init triggered.
-function GameManager.init()
+function GameManager:init()
     -- via cfg. init feature     
     global.facto = global.facto or {} 
-    for guid, persisted in pairs(persisted_classes) do
+    for guid, persisted in pairs(services) do
         -- if global.facto[guid] == nil, that means some features added
         -- should not change this data in on load        
-        if global.facto[guid] == nil then global.facto[guid] = {} end
-        persisted:init(guid, global.facto[guid])
+        -- if global.facto[guid] == nil then global.facto[guid] = {} end
+        persisted:init(guid, global.facto)
     end     
 end 
 
 -- Inovked when script.on_load triggered
-function GameManager.load()   
+function GameManager:load()   
     log(serpent.block(global.facto, {comment=true}))
     -- if global.facto == nil, that means game already broken
-    for guid, persisted in pairs(persisted_classes) do
+    for guid, persisted in pairs(services) do
         -- if global.facto[guid] == nil, that means some features added
         -- should not change this data in on load        
-        persisted:load(guid, global.facto[guid])
+        persisted:load(guid, global.facto)
     end 
 end 
 
@@ -67,14 +70,24 @@ end
 -- 1. on_init will not trigger, if not scenario changed ?
 -- on_configuration_changed ? need to test this event when will be triggered
 -- local Train = GlobalObjectManager.createSerializableClass("facto.train", {}, SelfCollection)
-function GameManager.run()    
-    GameManager.setup(cfg)    
-    Event.on_init(function()
-        GameManager.init()
+function GameManager:run()    
+    self:setup()    
+    self.event.on_init(function()
+        self:init()
     end)
-    Event.on_load(function()
-        GameManager.load()
+    self.event.on_load(function()
+        self:load()
     end)
+end 
+
+local instance 
+--- Get singleton instance
+function GameManager.getInstance(cfg)
+    if instance == nil then 
+       instance = GameManager(cfg)
+       instance:run()
+    end 
+    return instance
 end 
 
 -- @export
