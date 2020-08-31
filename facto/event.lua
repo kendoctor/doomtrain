@@ -1,9 +1,12 @@
+local Class = require("oop.class")
+local Serializable = require("facto.serializable")
+
 --- Event Class
 -- If consider priority handlers, needs an array table to hold handlers, otherwise needs sorting before call
 -- do we need coroutine to guarrantee on_loaded event which will be registered and triggered first ?
 -- @classmod Event 
-
-local Event = {}
+local Event = Class.extend({}, Serializable)
+-- @section property members
 Event.facto = defines.events
 Event.custom = {}
 Event.LIFECYCLE_CONTROLE_INIT = 0
@@ -12,6 +15,7 @@ Event.LIFECYCLE_SCRIPT_LOAD = 2
 Event.LIFECYCLE_SCRIPT_CONFIGURATION = 4
 Event.LIFECYCLE_RUNTIME = 8
 Event.LIFECYCLE = Event.LIFECYCLE_CONTROLE_INIT
+-- @section private data
 local facto_valid_raised_events = {
     Event.facto.on_console_chat,
     Event.facto.on_player_crafted_item, 
@@ -26,9 +30,7 @@ local facto_valid_raised_events = {
 local on_init = {}
 local on_load = {}
 local on_configuration_changed = {}
-local on_events = defines.events
-local token = 0
-
+local on_events = Event.facto
 local handlers = {} 
 local nth_tick_handlers =  {}
 local persisted_handlers = {}
@@ -38,9 +40,9 @@ local serialize = {
     persisted_handlers = persisted_handlers,
     persisted_nth_tick_handlers = persisted_nth_tick_handlers
 }
-
 local debug = debug
 
+-- @section private functions
 local function get_persisted_handler_token()
     serialize.token = serialize.token + 1
     return serialize.token 
@@ -83,7 +85,7 @@ local function recover_persisted_nth_tick_handlers(serialized_handlers)
     end 
 end
 
-local function callHandlersOfSameEvent(event, local_event)
+local function call_handlers_of_same_event(event, local_event)
     local key 
     if local_event ~= nil then 
         key = local_event 
@@ -102,15 +104,28 @@ local function callHandlersOfSameEvent(event, local_event)
             h(event)
         end 
     end 
-    -- if local_event == on_init or local_event == on_load or local_event == on_configuration_changed then 
-    --     Event.LIFECYCLE = Event.LIFECYCLE_RUNTIME
-    -- end 
 end 
 
 --- Call Event.on_nth_tick(...) registered handlers
-local function callHandlersOfSameTicks(event)
+local function call_handlers_of_same_ticks(event)
     Event.LIFECYCLE = Event.LIFECYCLE_RUNTIME
     for _, h in pairs(nth_tick_handlers[event.nth_tick]) do h(event)  end 
+end 
+
+-- @section metatable members
+function Event:__constructor()
+end 
+
+function Event:setup()
+    self.on_init(function() 
+        global.facto = global.facto or {}
+        self:init(self.guid(), global.facto)
+    end)
+    self.on_load(function()    
+        log(serpent.block(global))    
+        if global.facto == nil then error("Event.setup, serialization data borken.") end
+        self:load(self.guid(), global.facto)
+    end)
 end 
 
 --- Equals to script.on_init, but can have multiple handlers
@@ -164,16 +179,16 @@ function Event.add(event, handler, token)
     end 
     if next(handlers[event]) == nil then 
         if event == on_init then 
-            script.on_init(function() callHandlersOfSameEvent(nil, on_init) end)              
+            script.on_init(function() call_handlers_of_same_event(nil, on_init) end)              
         elseif event == on_load then 
-            script.on_load(function() callHandlersOfSameEvent(nil, on_load) end)
+            script.on_load(function() call_handlers_of_same_event(nil, on_load) end)
         elseif event == on_configuration_changed then 
-            script.on_configuration_changed(function() callHandlersOfSameEvent(nil, on_configuration_changed) end)
+            script.on_configuration_changed(function() call_handlers_of_same_event(nil, on_configuration_changed) end)
         elseif event == on_events then 
             --- should only be used for debuging
-            script.on_event(on_events, function(e) callHandlersOfSameEvent(e, on_events) end)
+            script.on_event(on_events, function(e) call_handlers_of_same_event(e, on_events) end)
         else 
-            script.on_event(event, callHandlersOfSameEvent)
+            script.on_event(event, call_handlers_of_same_event)
         end 
     end 
     handlers[event][token] =  handler
@@ -252,7 +267,7 @@ function Event.add_nth_tick(tick, handler, token)
         log(serpent.block(persisted_nth_tick_handlers, {comment = true}))
     end  
     if next(nth_tick_handlers[tick]) == nil then 
-        script.on_nth_tick(tick, callHandlersOfSameTicks)
+        script.on_nth_tick(tick, call_handlers_of_same_ticks)
     end 
     nth_tick_handlers[tick][token] = handler
     return token
@@ -284,25 +299,39 @@ function Event.remove_nth_tick(tick, token)
     return handler
 end
 
---- Put serialization vars into global.
-Event.on_init(function() 
-    global.facto = global.facto or {}
-    -- @fixme if global.facto.event is not nil
-    global.facto.event = serialize    
-end)
+--- When script.on_init triggered, GameManager will invoke this method for factory storing references to be serialized.
+-- @tparam string guid a unique key for factory registration in GameManager
+-- @tparam table storage a table for storing references to be serialized
+function Event:init(guid, facto)
+    facto[guid] = serialize
+end 
 
---- Recover serialization data from global.
-Event.on_load(function()
-    if not global.facto or not global.facto.event or not global.facto.event.persisted_handlers then 
-        error("Event.on_load, Event handlers data broken.")
-    end 
-    log(serpent.block(global.facto.event, { comment = true }))    
-    serialize = global.facto.event
+--- When script.on_load triggered, GameManager will invoke this method for factory getting data from save.
+-- @tparam string guid a unique key for factory registration in GameManager
+-- @tparam table data a table storing data loaded from save
+function Event:load(guid, facto)
+    serialize = facto[guid]
     persisted_handlers = serialize.persisted_handlers
     persisted_nth_tick_handlers = serialize.persisted_nth_tick_handlers
     recover_persisted_handlers(persisted_handlers)
     recover_persisted_nth_tick_handlers(persisted_nth_tick_handlers)
-end)
+end 
+
+--- Return an unique key for factory regsitration in GameManager.
+-- An abstract method should be overrided by its derived classes
+function Event.guid()   
+    return "facto.event"
+end 
+
+local instance 
+--- Get singleton instance
+function Event.getInstance()
+    if instance == nil then 
+       instance = Event()
+       instance:setup()      
+    end 
+    return instance
+end 
 
 -- @export
 return Event
