@@ -52,7 +52,7 @@ end
 -- @tparam table class
 ---@param ... variable parameters passed into oneClass:__constructor(...)
 ---@todo rename default_values to props
-local function call_handler(class, default_values)
+local function call_handler(class, ...)
     -- @todo considering less memory usage, lazy build default property members
     -- But, this will cause instancing object a little bit slow
     local instance = setmetatable(table_copy({}, class.__property_members), class)
@@ -62,18 +62,16 @@ local function call_handler(class, default_values)
     --     if type(...) ~= "table" then default_properties = { ... }
     -- end 
     -- @todo add event pre or post constructor event
-    default_values = default_values or {}
+    -- default_values = default_values or {}
+    --- call_hander(class, ...)
     if class.__constructor then
-        instance:__constructor(default_values)
-    else      
-        -- change exist merge to overwite merge
-        table_overwrite_merge(instance, default_values)           
+        instance:__constructor(...)
     end 
     return instance
 end 
 
 --- if not overrided this function, will be called here.
-function class_pairs_handler(class, tbl, k)
+local function class_pairs_handler(class, tbl, k)
    assert(class ~= nil)
    local super = class.super
    if super then 
@@ -84,7 +82,7 @@ end
 
 --- if not overrided this function, will be called here.
 -- find implementation if object' class has superclass
-function object_pairs_handler(class, tbl, k)     
+local function object_pairs_handler(class, tbl, k)     
     assert(class ~= nil)
     local super = class.super 
     if super and super.__pairs then 
@@ -96,7 +94,7 @@ end
 --  newly created Class always be blank, 
 -- metatable members of Class should be declared and implemented after Class created 
 -- @todo hide __property_members, __metalize into class's metatable
-local function initClass(property_members, superclass)
+local function init_class(property_members, superclass)
     local class = {}
     property_members = property_members or {}
     if superclass then table_append_merge(property_members, superclass.__property_members) end 
@@ -108,7 +106,7 @@ local function initClass(property_members, superclass)
     -- class.__object_pairs_handler = function(class, tbl, k )
     class.__pairs = function(tbl, k)
         -- if this class overwrote __pairs, here will be not called of this class
-        -- otherwise, if the class does not implement __pairs
+        -- it will be called, if the class does not implement __pairs
         return object_pairs_handler(class, tbl, k)
     end         
     return class
@@ -143,7 +141,7 @@ end
 -- Extand one class from another class with default values
 function Class.extend(property_members, superclass)
     local metatable = { __call = call_handler } -- , __pairs = class_pairs_handler 
-    local class = initClass(property_members, superclass)
+    local class = init_class(property_members, superclass)
     if superclass then 
         class.super = superclass
         metatable.__index = superclass
@@ -163,7 +161,6 @@ end
 -- @tparam table property_members 
 function Class.create(property_members)
     return Class.extend(property_members)
-    -- return setmetatable(initClass(property_members), MetaClass) 
 end 
 
 --- Metalize one table into a class object
