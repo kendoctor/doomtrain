@@ -33,13 +33,9 @@ local on_configuration_changed = {}
 local on_events = Event.facto
 local handlers = {} 
 local nth_tick_handlers =  {}
-local persisted_handlers = {}
-local persisted_nth_tick_handlers = {}
-local serialize = {
-    token = 0,
-    persisted_handlers = persisted_handlers,
-    persisted_nth_tick_handlers = persisted_nth_tick_handlers
-}
+local persisted_handlers
+local persisted_nth_tick_handlers
+local serialize
 local debug = debug
 
 -- @section private functions
@@ -114,6 +110,13 @@ end
 
 -- @section metatable members
 function Event:__constructor()
+    Event.super.__constructor(self)
+    serialize = self.serialize
+    serialize.token = 0
+    serialize.persisted_handlers = {}
+    serialize.persisted_nth_tick_handlers = {}
+    persisted_handlers = serialize.persisted_handlers
+    persisted_nth_tick_handlers = serialize.persisted_nth_tick_handlers
 end 
 
 function Event:setup()
@@ -302,15 +305,16 @@ end
 --- When script.on_init triggered, GameManager will invoke this method for factory storing references to be serialized.
 -- @tparam string guid a unique key for factory registration in GameManager
 -- @tparam table storage a table for storing references to be serialized
-function Event:init(guid, facto)
-    facto[guid] = serialize
-end 
+-- function Event:init(guid, facto)
+--     facto[guid] = serialize
+-- end 
 
 --- When script.on_load triggered, GameManager will invoke this method for factory getting data from save.
 -- @tparam string guid a unique key for factory registration in GameManager
 -- @tparam table data a table storing data loaded from save
 function Event:load(guid, facto)
-    serialize = facto[guid]
+    Event.super.load(self, guid, facto)
+    serialize = self.serialize
     persisted_handlers = serialize.persisted_handlers
     persisted_nth_tick_handlers = serialize.persisted_nth_tick_handlers
     recover_persisted_handlers(persisted_handlers)
