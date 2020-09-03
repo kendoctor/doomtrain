@@ -1,10 +1,11 @@
 local Class = require("oop.class")
-local Container = require("facto.gui.type.container")
-local VFlow = Class.extend({}, Container)
+local ContainerType = require("facto.gui.containertype")
+local VFlow = Class.extend({}, ContainerType)
 VFlow.type = "vflow"
 
-function VFlow:buildLuaGuiElement(name)
-    local props = { name = name, type = "flow", direction = "vertical"  }
+function VFlow:getProps(props)
+    props.type = "flow"
+    props.direction = "vertical"
     return props
 end 
 

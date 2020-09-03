@@ -1,14 +1,16 @@
 local Class = require("oop.class")
-local AbstractType = require("facto.gui.containertype")
+local ContainerType = require("facto.gui.containertype")
 
 --- A form represents HTML-like form.
 --- A form stores its data in a table, table's fields will be bond to form's children.
 -- @classmod Form
-local Form = Class.extend({}, AbstractType)
+local Form = Class.extend({}, ContainerType)
 Form.type = "form"
 
-function Form:getProps()
-    return { name = self.name, type = "flow", direction = "vertical" }
+function Form:getProps(props)
+    props.type = "flow"
+    props.direction = "vertical"
+    return props
 end
 
 -- @export

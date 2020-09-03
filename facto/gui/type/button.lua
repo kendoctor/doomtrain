@@ -3,9 +3,12 @@ local AbstractType = require("facto.gui.abstracttype")
 local Button = Class.extend({}, AbstractType)
 Button.type = "button"
 
-function Button:buildLuaGuiElement(name)
-    local props = { name = name, type = "button" }
-    props.caption = self.options.caption
+Button.RuleSupports = {
+    "color", "height", "width", "font"
+}
+
+function Button:getProps(props)
+    props.type = "button"
     return props
 end 
 

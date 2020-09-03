@@ -20,10 +20,30 @@ function ContainerType:initialize()
     self.children = {}
 end 
 
+function ContainerType:onattached(gui)
+    ContainerType.super.onattached(self, gui)
+    for _,child in pairs(self.children) do child:onattached(gui) end
+end 
+
+function ContainerType:findByName(name, found)    
+    local matched = ContainerType.super.findByName(self, name, found)
+    if matched then table.insert(found, matched) end 
+    for _, child in pairs(self.children) do 
+        child:findByName(name, found)
+    end 
+end 
+
 --- Check whether the gui is container type.
 -- @treturn boolean should return true
 function ContainerType:isContainer()
     return true
+end 
+
+function ContainerType:destroy()
+    for _,child in pairs(self.children) do 
+        child:destroy()
+    end 
+    ContainerType.super.destroy(self)
 end 
 
 -- @export

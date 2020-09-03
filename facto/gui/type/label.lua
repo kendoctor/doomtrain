@@ -3,9 +3,8 @@ local AbstractType = require("facto.gui.abstracttype")
 local Label = Class.extend({}, AbstractType)
 Label.type = "label"
 
-function Label:buildLuaGuiElement(name)
-    local props = { name = name, type = "label" }
-    props.caption = self.options.caption
+function Label:getProps(props)
+    props.type = "label"
     return props
 end 
 

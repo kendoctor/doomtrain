@@ -1,56 +1,143 @@
 local Class = require("oop.class")
+local typeof = type
+
+--- A builder for creating Gui instances.
+-- The root builder should be creating a form type.
+-- @classmod
 local GuiBuilder = Class.create()
 
-function GuiBuilder:__constructor(props)
-    self.guiFactory = props.guiFactory
-    if self.guiFactory == nil then error("GuiBuilder:__constructor, invalid guiFactory.") end 
-    self.type = props.type or "container"
-    self.data = props.data
-    self.options = props.options
-    self.parent = props.parent
+local function is_valid_serialization_function(fnc)
+    local i = 1
+    while true do
+        local name, value = debug.getupvalue(fnc, i)
+        if name and name ~= "_ENV" then return false end 
+        if not name then break end
+        i = i + 1
+    end
+    return true
+end
+
+--- Class constructor.
+-- @tparam string type
+-- @tparam table data
+-- @tparam table options
+-- @tparam class<GuiFactory> factory
+function GuiBuilder:__constructor(type, data, options, factory, root)
+    local class 
+    if factory == nil then error("GuiBuilder:__constructor, invalid factory.") end 
+    self.factory = factory
+
+    if typeof(type) == "table" then  -- and -- check type is derived from abstract type
+        factory:register(type.type, type)
+        class = type
+        self.type = class.type
+    else
+        self.type = type or "form"
+        class = factory:getClass(self.type)    
+        if class == nil then error("GuiBuilder:__constructor, Gui type not registered.") end 
+    end 
+    self.data = data
+    self.options = options or {}    
+    self.parent = nil
+    self.root = root or self
     self.children = {}
-    self.cached_gui = nil
+    self.handlers = {}
+    self.gui = nil
     self.locked = false 
+    self.current_zone = self
+    class.buildGui(self, self.options)
+    self.zones = class.buildZones(self)
+    self.current_zone = self:currentZone()
 end 
 
-function GuiBuilder:add(type, options, name)
-    return self:In(type, options, name).parent
+function GuiBuilder:currentZone()
+    if typeof(self.zones) ~= "table" then return self end 
+    local index, zone = next(self.zones)
+    if zone == nil then return self else return zone end 
 end 
 
-
-function GuiBuilder:In(type, options, name)
-     -- if Class.subclassof(child) == "GuiBuilder" then 
-    local child = self.guiFactory:createBuilder(type, nil, options)    
-    child.name = name 
-    child.parent = self
-    table.insert(self.children, child)
-    return child
+function GuiBuilder:add(name, type, options, children_builder_callback)
+    -- return self:In(type, options, name).parent
+    -- check self is a container
+    local data, zone
+    zone = self.current_zone
+    -- form1, subform
+    if typeof(self.data) == "table" then data = self.data[name] end
+    name = name or self.factory:generateName()
+    local cb = self.factory:createBuilder(type, data, options, self.root)
+    -- check type is container type
+    if typeof(children_builder_callback) == "function" then 
+        children_builder_callback(cb)
+    end 
+    cb.name = name
+    cb.parent = zone
+    zone.children[name] = cb
+    return self
 end 
 
-function GuiBuilder:Out()
-    --- parent nil 
-    return self.parent
+function GuiBuilder:get(name)    
+    return self.children[name]
+end 
+
+function GuiBuilder:style(style_builder_callback)
+    if self:isRoot() then 
+        if typeof(style_builder_callback) ~= "function" then error("GuiBuilder:style, style_builder_callback should be function type.") end 
+        local sb = self.factory:createStyleBuilder()
+        style_builder_callback(sb)
+        self.style = sb:getStyle()
+    else self.root:style(style_builder_callback) end 
+    return self
+end 
+
+--- @todo id could be manually set, filter for specific element
+function GuiBuilder:onclick(handler)
+    if self:isRoot() then
+        if typeof(handler) ~= "function" then error(" GuiBuilder:onclick, handler should be function type.") end
+        if not is_valid_serialization_function(handler) then error("AbstractType.onclick, invalid handler for serialization.") end 
+        self.handlers["onclick"] = self.handlers["onclick"] or {}    
+        table.insert(self.handlers["onclick"], string.dump(handler))
+    else
+        self.root:onclick(handler)
+    end 
+    return self
 end 
 
 function GuiBuilder:isRoot()
-    return self.parent == nil
+    return self == self.root
 end 
 
-function GuiBuilder:getGui()
-    if self.locked then return self.cached_gui end 
-    --- type is string or function ?
-    -- self.cached_gui = self.type(self.name, self.data)
+function GuiBuilder:getGui(name, player, root)
+    local parent_factoobj
+    if self.locked then return self.gui end     
+    self.locked = true
+    if not self:isRoot() then error("GuiBuilder:getGui, only root builder can call this function.") end 
+    if typeof(name) ~= "string" then error("GuiBuilder:getGui, name is invalid.") end
+    if player == nil then error("GuiBuilder:getGui, player is invalid.") end 
+    parent_factoobj = player.gui[root] 
+    if parent_factoobj == nil then error("GuiBuilder:getGui, root is invalid.") end
+    if parent_factoobj[name] ~= nil then error(string.format("GuiBuilder:getGui, player.gui[%s].%s already exisits.", root, name)) end 
+    self.name = name 
+    self.id = string.format("%s_%s_%s", player.index, root, name)
+    self:createGui(parent_factoobj)
+    self.gui.handlers = self.handlers
+    if self.style then self.gui:applyStyle(self.style) end 
+    self.gui:onattached(self.gui)
+    return self.gui
+end 
 
-    self.cached_gui = self.guiFactory:create(self.name, self.type, nil, self.options)
+function GuiBuilder:createGui(parent_factoobj, root)
+    if root then self.id = string.format("%s_%s", self.parent.id, self.name)  end 
+    self.gui = self.factory
+        :create(self.id, self.name, self.type, self.data, self.options, root)
+        :attach(parent_factoobj)
+    if root == nil then self.gui.root = self.gui end 
     -- @fixme if gui is an container
-    -- if Class.subclassof(classof(self.cached_gui), )
     if self.children then 
         for _, builder in pairs(self.children) do 
-            self.cached_gui:add(builder:getGui())
+            self.gui:add(builder:createGui(self.gui.factoobj, self.gui.root))
         end 
     end 
-    self.locked = true
-    return self.cached_gui
+    return self.gui
 end 
 
 -- @export

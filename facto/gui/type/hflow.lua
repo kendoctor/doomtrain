@@ -1,10 +1,11 @@
 local Class = require("oop.class")
-local Container = require("facto.gui.type.container")
-local HFlow = Class.extend({}, Container)
+local ContainerType = require("facto.gui.containertype")
+local HFlow = Class.extend({}, ContainerType)
 HFlow.type = "hflow"
 
-function HFlow:buildLuaGuiElement(name)
-    local props = { name = name, type = "flow", direction = "horizontal"  }
+function HFlow:getProps(props)
+    props.type = "flow"
+    props.direction = "horizontal"
     return props
 end 
 
