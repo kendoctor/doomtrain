@@ -190,5 +190,11 @@ function AbstractType:destroy()
     local factory = self.factory:remove(self)
 end 
 
+function AbstractType:move(x,y)
+    if self.factoobj.location then 
+        self.factoobj.location = { x, y }
+    end 
+end 
+
 -- @export
 return AbstractType

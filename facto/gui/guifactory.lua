@@ -38,7 +38,7 @@ function GuiFactory:on_gui_click(e)
                 for _, serialized_handler in pairs(handlers.onclick) do 
                     if not instance:isValid() then break end 
                     local h = (loadstring or load)(serialized_handler)
-                    h(instance.root, instance)
+                    h(instance.root, instance, instance.factoobj.gui.player)
                 end 
             end 
         end 
@@ -53,6 +53,8 @@ function GuiFactory:setup()
     class = require("facto.gui.type.window")
     self:register(class.type, class)
     class = require("facto.gui.type.spritebutton")
+    self:register(class.type, class)
+    class = require("facto.gui.type.panel")
     self:register(class.type, class)
     class = require("facto.gui.type.hpanel")
     self:register(class.type, class)

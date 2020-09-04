@@ -1,12 +1,16 @@
 local Class = require("oop.class")
-local Container = require("facto.gui.type.container")
-local Panel = Class.extend({}, Container)
+local ContainerType = require("facto.gui.containertype")
+local Panel = Class.extend({}, ContainerType)
 Panel.type = "panel"
 
-function Panel:getProps()
-    local props = { name = self.name, type = "frame" }
-    props.caption = self.options.caption
+function Panel:getProps(props)
+    props.type = "frame"
+    props.direction = "vertical"
     return props
+end 
+
+function Panel:center()
+    self.factoobj.force_auto_center()
 end 
 
 -- @export

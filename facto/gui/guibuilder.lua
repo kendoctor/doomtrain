@@ -26,7 +26,6 @@ function GuiBuilder:__constructor(type, data, options, factory, root)
     local class 
     if factory == nil then error("GuiBuilder:__constructor, invalid factory.") end 
     self.factory = factory
-
     if typeof(type) == "table" then  -- and -- check type is derived from abstract type
         factory:register(type.type, type)
         class = type
@@ -47,7 +46,7 @@ function GuiBuilder:__constructor(type, data, options, factory, root)
     self.current_zone = self
     class.buildGui(self, self.options)
     self.zones = class.buildZones(self)
-    self.current_zone = self:currentZone()
+    self.current_zone = self:currentZone() 
 end 
 
 function GuiBuilder:currentZone()
@@ -79,7 +78,7 @@ function GuiBuilder:get(name)
     return self.children[name]
 end 
 
-function GuiBuilder:style(style_builder_callback)
+function GuiBuilder:buildStyle(style_builder_callback)
     if self:isRoot() then 
         if typeof(style_builder_callback) ~= "function" then error("GuiBuilder:style, style_builder_callback should be function type.") end 
         local sb = self.factory:createStyleBuilder()
