@@ -5,7 +5,7 @@ Panel.type = "panel"
 
 function Panel:getProps(props)
     props.type = "frame"
-    props.direction = "vertical"
+    props.direction = self.options.direction or "vertical"
     return props
 end 
 

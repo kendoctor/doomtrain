@@ -80,11 +80,11 @@ end
 
 function GuiBuilder:buildStyle(style_builder_callback)
     if self:isRoot() then 
-        if typeof(style_builder_callback) ~= "function" then error("GuiBuilder:style, style_builder_callback should be function type.") end 
+        if typeof(style_builder_callback) ~= "function" then error("GuiBuilder:buildStyle, style_builder_callback should be function type.") end 
         local sb = self.factory:createStyleBuilder()
         style_builder_callback(sb)
         self.style = sb:getStyle()
-    else self.root:style(style_builder_callback) end 
+    else self.root:buildStyle(style_builder_callback) end 
     return self
 end 
 

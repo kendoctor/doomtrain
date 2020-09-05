@@ -1,6 +1,8 @@
 local Class = require("oop.class")
 local AbstractType = Class.create()
 
+AbstractType.GuiBuilder = require("facto.gui.guibuilder")
+
 AbstractType.ColorPresets = {
     maroon = {r = 128, g = 0, b = 0},
     dark_red = {r = 139, g = 0, b = 0},
@@ -187,6 +189,7 @@ end
 
 function AbstractType:destroy()
     self.factoobj.destroy()
+    -- @fixme change the scope to remove gui types
     local factory = self.factory:remove(self)
 end 
 
