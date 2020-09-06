@@ -1,4 +1,4 @@
-local Class = require("oop.class")
+local Class = require("facto.class")
 local AbstractType = require("facto.gui.abstracttype")
 local Text = Class.extend({}, AbstractType)
 Text.type = "text"

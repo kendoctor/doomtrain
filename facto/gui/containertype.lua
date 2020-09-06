@@ -1,4 +1,4 @@
-local Class = require("oop.class")
+local Class = require("facto.class")
 local AbstractType = require("facto.gui.abstracttype")
 
 --- A gui type for extending container gui type which has children gui.

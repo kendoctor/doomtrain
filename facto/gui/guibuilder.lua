@@ -1,4 +1,4 @@
-local Class = require("oop.class")
+local Class = require("facto.class")
 local typeof = type
 
 --- A builder for creating Gui instances.

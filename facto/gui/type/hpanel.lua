@@ -1,4 +1,4 @@
-local Class = require("oop.class")
+local Class = require("facto.class")
 local ContainerType = require("facto.gui.containertype")
 local HPanel = Class.extend({}, ContainerType)
 HPanel.type = "hpanel"

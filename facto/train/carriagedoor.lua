@@ -1,4 +1,4 @@
-local Class = require("oop.class")
+local Class = require("facto.class")
 
 -- @classmod CarriageDoor
 local CarriageDoor = Class.create()

@@ -1,4 +1,4 @@
-local Class = require("oop.class")
+local Class = require("facto.class")
 local AbstractStateUpdater = require("facto.player.abstractstateupdater")
 
 require("utils")

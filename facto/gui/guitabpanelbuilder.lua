@@ -1,4 +1,4 @@
-local Class = require("oop.class")
+local Class = require("facto.class")
 local typeof = type
 local GuiBuilder = require("facto.gui.guibuilder")
 

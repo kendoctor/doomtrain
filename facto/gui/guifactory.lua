@@ -1,4 +1,4 @@
-local Class = require("oop.class")
+local Class = require("facto.class")
 local AbstractFactory = require("facto.abstractfactory")
 -- local GuiBuilder = require("facto.gui.guibuilder")
 local StyleBuilder = require("facto.gui.stylebuilder")

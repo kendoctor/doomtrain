@@ -1,4 +1,4 @@
-local Class = require("oop.class")
+local Class = require("facto.class")
 local Event = require("facto.event")
 local Carriage = require("facto.train.carriage")
 local exchangerFactory = require("facto.exchanger.exchangerfactory").getInstance()
@@ -103,7 +103,7 @@ end
 
 --- Clear carriage data.
 function FluidWagon:destroy()
-    self.super.destroy(self)
+    FluidWagon.super.destroy(self)
     for id, exchanger in pairs(self.exchangers) do 
         self.exchangers[id] = nil
         exchangerFactory:remove(exchanger)

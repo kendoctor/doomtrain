@@ -1,4 +1,4 @@
-local Class = require("oop.class")
+local Class = require("facto.class")
 
 --- Manage the game objects and resources.
 -- @classmod GameManager
@@ -22,8 +22,14 @@ function GameManager:setup()
     --         GameManager.register(class.guid(), class)
     --     end 
     -- end 
-    local class = require("facto.event")
-    self.event = self:register(class)
+    local class = require("facto.log.logger")
+    self.Logger = class()
+    class = require("facto.event")
+    class.Logger = self.Logger
+    self.Event = self:register(class)
+    class = require("facto.gui.guifactory")
+    class.Logger = self.Logger
+    self.GuiFactory = self:register(class, self.Event)
     -- class = require("facto.train.trainfactory")
     -- self:register(class)
     -- class = require("facto.train.carriagefactory")
@@ -37,8 +43,8 @@ function GameManager:setup()
 end 
 
 --- Register services
-function GameManager:register(class)
-    local instance = class.getInstance()
+function GameManager:register(class, ...)
+    local instance = class(...)
     services[class.guid()] = instance
     return instance
 end 
@@ -57,13 +63,13 @@ end
 
 -- Inovked when script.on_load triggered
 function GameManager:load()   
-    log(serpent.block(global.facto, {comment=true}))
     -- if global.facto == nil, that means game already broken
     for guid, persisted in pairs(services) do
         -- if global.facto[guid] == nil, that means some features added
         -- should not change this data in on load        
         persisted:load(guid, global.facto)
     end 
+    log(serpent.block(global.facto))
 end 
 
 --- @todo if new features added into scenario, could we still load old save game ?
@@ -72,10 +78,10 @@ end
 -- local Train = GlobalObjectManager.createSerializableClass("facto.train", {}, SelfCollection)
 function GameManager:run()    
     self:setup()    
-    self.event.on_init(function()
+    self.Event.on_init(function()
         self:init()
     end)
-    self.event.on_load(function()
+    self.Event.on_load(function()
         self:load()
     end)
 end 

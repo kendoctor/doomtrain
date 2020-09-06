@@ -1,4 +1,4 @@
-local Class = require("oop.class")
+local Class = require("facto.class")
 local Style = Class.create()
 
 function Style:__constructor()

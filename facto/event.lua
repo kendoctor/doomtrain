@@ -1,5 +1,6 @@
-local Class = require("oop.class")
+local Class = require("facto.class")
 local Serializable = require("facto.serializable")
+local stddebug = debug
 
 --- Event Class
 -- If consider priority handlers, needs an array table to hold handlers, otherwise needs sorting before call
@@ -125,7 +126,6 @@ function Event:setup()
         self:init(self.guid(), global.facto)
     end)
     self.on_load(function()    
-        log(serpent.block(global))    
         if global.facto == nil then error("Event.setup, serialization data borken.") end
         self:load(self.guid(), global.facto)
     end)

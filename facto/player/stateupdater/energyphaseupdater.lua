@@ -1,4 +1,4 @@
-local Class = require("oop.class")
+local Class = require("facto.class")
 local AbstractStateUpdater = require("facto.player.abstractstateupdater")
 local StatePhases = require("facto.player.statephases")
 
@@ -29,7 +29,7 @@ local EnergyPhases = StatePhases("energy")
     end, 
     function(player) 
         player.factoobj.character_running_speed_modifier  = player.factoobj.character_running_speed_modifier  + 0.25
-        player.factoobj.character_mining_speed_modifier  = player.factoobj.character_mining_speed_modifier  - 0.25
+        player.factoobj.character_mining_speed_modifier  = player.factoobj.character_mining_speed_modifier  + 0.25
     end)
     :add("Exhausted", 5, 20, 
     function(player) 

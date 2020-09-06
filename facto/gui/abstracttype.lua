@@ -1,4 +1,4 @@
-local Class = require("oop.class")
+local Class = require("facto.class")
 local AbstractType = Class.create()
 
 AbstractType.GuiBuilder = require("facto.gui.guibuilder")

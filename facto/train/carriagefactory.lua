@@ -1,4 +1,4 @@
-local Class = require("oop.class")
+local Class = require("facto.class")
 local AbstractFactory = require("facto.abstractfactory")
 
 --- Carriage factory for creating different types of carriages, such as locomotive, cargo wagon, etc.

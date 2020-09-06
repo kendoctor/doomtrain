@@ -1,4 +1,4 @@
-local Class = require("oop.class")
+local Class = require("facto.class")
 local Event = require("facto.event")
 -- Avoid circular require
 local trainFactory = require("facto.train.trainfactory").getInstance()
@@ -86,7 +86,7 @@ function Train:build(tiles, lazycalls)
 
     if self.factoobj then facto_carriages = self.factoobj.carriages end 
     facto_carriages = facto_carriages or {}
-    for order, factoobj in ipairs(facto_carriages) do 
+    for order, factoobj in ipairs(facto_carriages) do
         self:addCarriage({ factoobj = factoobj, train = self, order = order }, tiles, lazycalls)        
     end 
     if #tiles > 0 then self.surface.set_tiles(tiles, true) end 
@@ -102,7 +102,7 @@ end
 -- @treturn class<Carriage>
 function Train:addCarriage(props, tiles, lazycalls)
     local old_carriage = carriageFactory:get(props.factoobj.unit_number)        
-    local new_carriage = carriageFactory:create(props.factoobj.type, props)   
+    local new_carriage = carriageFactory:create(props.factoobj.type, props)
     new_carriage:build(old_carriage, tiles, lazycalls)
     self.carriages[props.order] = new_carriage
     if old_carriage then old_carriage.train:removeCarriage(old_carriage) end

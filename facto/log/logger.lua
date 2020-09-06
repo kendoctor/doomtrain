@@ -1,4 +1,4 @@
-local Class = require("oop.class")
+local Class = require("facto.class")
 local Logger = Class.create()
 local stdlog = log 
 local stderror = error

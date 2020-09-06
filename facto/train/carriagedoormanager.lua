@@ -1,4 +1,4 @@
-local Class = require("oop.class")
+local Class = require("facto.class")
 local AbstractFactory = require("facto.abstractfactory")
 local CarriageDoor = require("facto.train.carriagedoor")
 

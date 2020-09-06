@@ -1,4 +1,4 @@
-local Class = require("oop.class")
+local Class = require("facto.class")
 local Event = require("facto.event")
 local StateModifiers = require("facto.player.statemodifiers")
 -- local StatePhases = require("facto.player.statephases")
@@ -286,6 +286,23 @@ Event.on(defines.events.on_gui_click, function(e)
     local player = playerFactory:get(e.player_index)
     player:eat()
 end)
+Event.on(defines.events.on_player_mined_item, function(e)
+    local factoobj = game.players[e.player_index]
+    debug("mines item")
+end)
+
+Event.on(defines.events.on_player_mined_entity, function(e)
+    local factoobj = game.players[e.player_index]
+    debug("mines entity")
+end)
+
+Event.on(defines.events.on_pre_player_mined_item, function(e)
+    local factoobj = game.players[e.player_index]
+    -- e.entity.minable = false 
+    debug("pre mined item")
+end)
+
+
 -- @export
 return Player
 

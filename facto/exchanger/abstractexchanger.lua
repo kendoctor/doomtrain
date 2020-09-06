@@ -1,4 +1,4 @@
-local Class = require("oop.class")
+local Class = require("facto.class")
 local Event = require("facto.event")
 
 --- Abstract class for exchanger.
