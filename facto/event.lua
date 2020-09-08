@@ -36,6 +36,7 @@ local handlers = {}
 local nth_tick_handlers =  {}
 local persisted_handlers
 local persisted_nth_tick_handlers
+local timers
 local serialize
 local debug = debug
 
@@ -116,8 +117,11 @@ function Event:__constructor()
     serialize.token = 0
     serialize.persisted_handlers = {}
     serialize.persisted_nth_tick_handlers = {}
+    serialize.timers = {}
+    serialize.on_timer_token = nil
     persisted_handlers = serialize.persisted_handlers
     persisted_nth_tick_handlers = serialize.persisted_nth_tick_handlers
+    timers = serialize.timers
 end 
 
 function Event:setup()
@@ -136,10 +140,14 @@ function Event.on_init(handler)
     Event.on(on_init, handler)
 end 
 
+Event.onInit = Event.on_init
+
 --- Equals to script.on_load, but can have multiple handlers
 function Event.on_load(handler)
     Event.on(on_load, handler)    
 end 
+
+Event.onLoad = Event.on_load
 
 --- Equals to script.on_configuration_changed, but can have multiple handlers
 function Event.on_configuration_changed(handler)
@@ -276,8 +284,11 @@ function Event.add_nth_tick(tick, handler, token)
     return token
 end 
 
+Event.addNthTick = Event.add_nth_tick
+
 --- A convenient function same with Event.add_nth_tick.
 Event.on_nth_tick = Event.add_nth_tick
+Event.onNthTick = Event.add_nth_tick
 
 --- Remove handler(s) with nth_tick or token.
 -- @tparam uint tick nth_tick 
@@ -302,6 +313,52 @@ function Event.remove_nth_tick(tick, token)
     return handler
 end
 
+Event.removeNthTick = Event.remove_nth_tick
+
+function get_timers()
+    return timers
+end 
+
+function Event.removeTimer(token)
+    if timers[token] ~= nil then timers[token] = nil end
+    if next(timers) == nil and serialize.on_timer_token then
+        Event.remove(Event.facto.on_tick, serialize.on_timer_token) 
+        serialize.on_timer_token = nil
+    end 
+end
+
+-- @todo refine these functions
+remove_timer = Event.removeTimer
+
+function Event.onTimer(e)
+    for token, timer in pairs(get_timers()) do 
+        if (e.tick - timer.start_tick) % timer.timeout == 0 then 
+            local handler = (load or loadstring)(timer.handler)
+            handler(e, timer.token)
+            if not timer.is_interval then remove_timer(token) end 
+        end 
+    end 
+end 
+
+--- CreateTimer only can be used at Control runtime stage.
+function Event.createTimer(handler, timeout, is_interval)
+    if serialize.on_timer_token == nil then 
+        serialize.on_timer_token = Event.on(Event.facto.on_tick, Event.onTimer)
+    end 
+    local token = tostring(get_persisted_handler_token())
+    if not is_valid_serialization_function(handler) then error("Event.createTimoutTimer, invalid handler for serialization.") end 
+    timers[token] = { token = token, start_tick = game and game.tick or 0, timeout = timeout, handler = string.dump(handler), is_interval = is_interval }
+    return token
+end 
+
+function Event.createTimeoutTimer(handler, timeout)
+    return Event.createTimer(handler, timeout, false)
+end 
+
+function Event.createIntervalTimer(handler, timeout)
+    return Event.createTimer(handler, timeout, true)
+end 
+
 --- When script.on_init triggered, GameManager will invoke this method for factory storing references to be serialized.
 -- @tparam string guid a unique key for factory registration in GameManager
 -- @tparam table storage a table for storing references to be serialized
@@ -317,6 +374,7 @@ function Event:load(guid, facto)
     serialize = self.serialize
     persisted_handlers = serialize.persisted_handlers
     persisted_nth_tick_handlers = serialize.persisted_nth_tick_handlers
+    timers = serialize.timers
     recover_persisted_handlers(persisted_handlers)
     recover_persisted_nth_tick_handlers(persisted_nth_tick_handlers)
 end 
