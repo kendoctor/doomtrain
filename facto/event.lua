@@ -163,12 +163,19 @@ function Event.register(events)
     end 
 end 
 
-function Event.raise(event, data)
+function Event.dispatch(event, data)
     if Event.LIFECYCLE ~= Event.LIFECYCLE_RUNTIME then error("Event.raise, raise event should be at Event.LIFECYCLE_RUNTIME stage.") end
     if not is_valid_raised_event(event) then error(string.format("Event.raise, event(%s) is not a valid raised event.", event)) end 
     data = data or {}
     data.name = event
     data.tick = game.tick
+    call_handlers_of_same_event(data)
+end 
+
+function Event.raise(event, data)
+    if Event.LIFECYCLE ~= Event.LIFECYCLE_RUNTIME then error("Event.raise, raise event should be at Event.LIFECYCLE_RUNTIME stage.") end
+    if not is_valid_raised_event(event) then error(string.format("Event.raise, event(%s) is not a valid raised event.", event)) end 
+    data = data or {}
     script.raise_event(event, data)
 end 
 
