@@ -48,10 +48,10 @@ end
 -- @tparam string key since word [type] is lua keyword, avoiding to use it
 -- @tparam table props object's property values
 -- @treturn object
-function AbstractFactory:create(key, props)
+function AbstractFactory:create(key, ...)
     local class = self:getClass(key)
     if class == nil then error(string.format("Key(%s) not registered.", key)) end 
-    local instance = class(props) 
+    local instance = class(...) 
     -- this value for deserialization
     instance.type = key 
     self.serialize.instanced[tostring(instance:getId())] = instance
