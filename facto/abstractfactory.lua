@@ -101,7 +101,7 @@ end
 --- Return an unique key for factory regsitration in GameManager.
 -- An abstract method should be overrided by its derived classes
 function AbstractFactory.guid()   
-    error("AbstractFactory.guid should be overried.")
+    error("AbstractFactory.guid should be overriden.")
 end 
 
 -- @export
