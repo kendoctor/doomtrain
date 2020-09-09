@@ -169,7 +169,7 @@ function Event.dispatch(event, data)
     data = data or {}
     data.name = event
     data.tick = game.tick
-    call_handlers_of_same_event(data)
+    if handlers[event] then call_handlers_of_same_event(data) end
 end 
 
 function Event.raise(event, data)
