@@ -39,17 +39,21 @@ function Logger.info(message, ...)
     Logger.log(Logger.LEVEL_INFO, message, ...)
 end 
 
-function Logger:notice(message, ...)
+function Logger.notice(message, ...)
     Logger.log(Logger.LEVEL_NOTICE, message, ...)
 end 
 
-function Logger:warning(message, ...)
+function Logger.warning(message, ...)
     Logger.log(Logger.LEVEL_WARNING, message, ...)
 end 
 
-function Logger:error(message, ...)
+function Logger.error(message, ...)
     local log = Logger.log(Logger.LEVEL_ERROR, message, ...)
     stderror(log[1])
+end 
+
+function Logger.api()
+    return Logger.debug, Logger.info, Logger.notice, Logger.warning, Logger.error
 end 
 
 -- @export

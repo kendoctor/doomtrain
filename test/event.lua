@@ -1,4 +1,4 @@
-Event = Event or require("facto.event")
+Event = require("facto.event").getInstance()
 local count = 0
 function dbg(message)
     count = count + 1

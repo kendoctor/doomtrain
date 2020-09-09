@@ -194,7 +194,6 @@ function Player:update(game_tick)
 
     local b1 = left["b1"] 
     if not b1  then b1 = left.add({ name = "b1", type="button", caption = "eat" }) end 
-
 end 
 
 function Player:getHealth()
