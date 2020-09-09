@@ -5,7 +5,6 @@ local StateModifiers = require("facto.player.statemodifiers")
 local playerFactory = require("facto.player.playerfactory").getInstance()
 local stateUpdaterFactory = require("facto.player.stateupdaterfactory").getInstance()
 
-require("utils")
 local Player = Class.create()
 Player.type = "player"
 
