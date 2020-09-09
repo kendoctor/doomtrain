@@ -30,6 +30,12 @@ function GameManager:setup()
     class = require("facto.gui.guifactory")
     class.Logger = self.Logger
     self.GuiFactory = self:register(class, self.Event)
+    class = require("facto.player.playerfactory")    
+    class.Event = self.Event
+    self:register(class):setup()   
+    class = require("facto.updater.updaterfactory")
+    class.Event = self.Event
+    self.UpdaterFactory = self:register(class):setup()
     -- class = require("facto.train.trainfactory")
     -- self:register(class)
     -- class = require("facto.train.carriagefactory")
@@ -38,8 +44,7 @@ function GameManager:setup()
     -- self:register(class)
     -- class = require("facto.exchanger.exchangerfactory")
     -- self:register(class)
-    -- class = require("facto.player.playerfactory")
-    -- self:register(class)
+    
 end 
 
 --- Register services
