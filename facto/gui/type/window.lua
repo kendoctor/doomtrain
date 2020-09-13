@@ -8,6 +8,8 @@ local Window = Class.extend({}, ContainerType)
 Window.type = "window"
 
 function Window.buildGui(builder, options)
+    options.title = options.title or options.caption
+    options.caption = nil
     builder
     :add("header", "hflow", nil, function(cb) 
         cb:add("title", "label", { caption = options.title, style="frame_title" } )
@@ -17,7 +19,7 @@ function Window.buildGui(builder, options)
     end)
     :add("client", "form")
     :buildStyle(function(sb)
-        sb:add("drag-element", "hstretch:on;min-width:0;nat-height:24;")
+        sb:add("#drag-element", "hstretch:on;min-width:0;nat-height:24;")
     end)
     :onclick(function(gui, target)
         if target.name == "close" then gui:close() end 
@@ -50,7 +52,7 @@ function Window:onattached(gui)
     gui:findByName("drag-element", found)
     gui:findByName("title", found)    
     found[1].factoobj.drag_target = gui.factoobj
-    gui.factoobj.location = {x = 300, y = 200}
+    -- gui.factoobj.location = {x = 300, y = 200}
     found[2].factoobj.drag_target = gui.factoobj
     Window.super.onattached(self, gui)
 end 

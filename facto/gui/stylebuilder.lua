@@ -1,9 +1,10 @@
 local Class = require("facto.class")
+local Style = require("facto.gui.style")
 
 local StyleBuilder = Class.create()
 
-function StyleBuilder:__constructor(style)
-    self.instance = style
+function StyleBuilder:__constructor()
+    self.instance = Style()
 end 
 
 --[[
@@ -13,36 +14,34 @@ end
     .class
     :add("button", "color:red;")
 ]]
-function explode(d, p)
-    local t, ll, l
-    t = {}
-    ll = 0
-    if (#p == 1) then return {p} end
-    while true do
-        l = string.find(p, d, ll, true) -- find the next d in the string
-        if l ~= nil then table.insert(t, string.sub(p, ll, l - 1)) ll = l + 1 
-        else 
-            local str = string.sub(p, ll)
-            if string.len(str) > 0 then table.insert(t, str) end
-            break 
-        end
-    end
-    return t
-end
 
 function parse_rules(rules)
     local ruleset = {}
-    for match in rules:gmatch "([%w-_]+%s*:%s*[%w-_]+);?" do 
-        local token = explode(":", match)
-        if #token ~= 2 then error(string.format("parse_rules, invalid rule: %s", match)) end
-        ruleset[token[1]] = token[2]
+    for key, value in rules:gmatch "([%w-_]+)%s*:%s*([%w-_]+)%s*;?" do 
+        ruleset[key] = value
     end 
+    if next(ruleset) == nil then return nil end
     return ruleset
 end 
 
-function StyleBuilder:add(selector, rules)
+function parse_selectors(selectors)
+    local retval = {}
+    for selector in selectors:gmatch "%s*([^,%s]+)%s*,?" do 
+       table.insert(retval, selector)
+    end 
+    if next(retval) == nil then return nil end
+    return retval
+end 
+
+function StyleBuilder:add(selectors, rules)
     if type(rules) ~= "string" then error("StyleBuilder:add, invalid type of rules.") end 
-    self.instance:add(selector, parse_rules(rules))
+    rules = parse_rules(rules)
+    selectors =  parse_selectors(selectors)
+    -- @todo validation
+    if selectors == nil or rules == nil then return self end 
+    for k, selector in pairs(selectors) do
+        self.instance:add(selector, rules)
+    end 
     return self
 end 
 

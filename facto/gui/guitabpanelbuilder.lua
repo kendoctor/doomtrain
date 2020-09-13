@@ -15,7 +15,7 @@ function GuiTabPanelBuilder:add(name, type, options, children_builder_callback)
     name = name or self.factory:generateName()
     local tab_type = options.tab_type or "tab"
     local tab_caption = options.tab_caption 
-    local content_name = options.content_name or "content_"..name
+    local content_name = options.content_name or name.."_content"
     local tabcontent = {}
     GuiTabPanelBuilder.super.add(self, name, tab_type, { caption = tab_caption })
     GuiTabPanelBuilder.super.add(self, content_name, type, options, children_builder_callback)

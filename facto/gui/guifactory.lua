@@ -2,7 +2,6 @@ local Class = require("facto.class")
 local AbstractFactory = require("facto.abstractfactory")
 -- local GuiBuilder = require("facto.gui.guibuilder")
 local StyleBuilder = require("facto.gui.stylebuilder")
-local Style = require("facto.gui.style")
 local typeof = type
 
 local GuiFactory = Class.extend({}, AbstractFactory)
@@ -99,6 +98,8 @@ function GuiFactory:setup()
     self:register(class.type, class)
     class = require("facto.gui.type.tabpanel")
     self:register(class.type, class)
+    class = require("facto.gui.type.scrolllist")
+    self:register(class.type, class)
 end 
 
 function GuiFactory:generateName()
@@ -135,7 +136,23 @@ function GuiFactory:createBuilder(type, data, options, root)
 end 
 
 function GuiFactory:createStyleBuilder()
-    return StyleBuilder(Style())
+    return StyleBuilder()
+end 
+
+function GuiFactory:getDescriptionsOfAllGui()
+    local all = {}
+    for id, gui in pairs(self.serialize.instanced) do
+        if gui:isRoot() then table.insert(all, gui:__tostring()) end  
+    end
+    return all
+end 
+
+function GuiFactory:getTypesRegistered()
+    local all = {}
+    for t, class in pairs(self.registered) do
+        table.insert(all, t)
+    end
+    return all
 end 
 
 function GuiFactory.guid()

@@ -27,7 +27,9 @@ AbstractType.ColorRules = {
 
 local function color_value_translator(value)
     -- if type(value) == "table" then return value end 
-    return AbstractType.ColorPresets[value]
+    local color = AbstractType.ColorPresets[value]
+    if color == nil then error(string.format("Invalid color(%s).", value)) end 
+    return color
 end 
 
 local function int_value_translator(value)
@@ -198,6 +200,10 @@ function AbstractType:move(x,y)
         self.factoobj.location = { x, y }
     end 
 end 
+
+function AbstractType:__tostring()
+    return string.format("Gui Type(%s), id(%s), name(%s)", self.type, self.id, self.name)
+end
 
 -- @export
 return AbstractType

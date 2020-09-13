@@ -64,13 +64,13 @@ function GuiBuilder:add(name, type, options, children_builder_callback)
     if typeof(self.data) == "table" then data = self.data[name] end
     name = name or self.factory:generateName()
     local cb = self.factory:createBuilder(type, data, options, self.root)
+    cb.name = name
+    cb.parent = zone
+    zone.children[name] = cb
     -- check type is container type
     if typeof(children_builder_callback) == "function" then 
         children_builder_callback(cb)
     end 
-    cb.name = name
-    cb.parent = zone
-    zone.children[name] = cb
     return self
 end 
 
@@ -78,13 +78,16 @@ function GuiBuilder:get(name)
     return self.children[name]
 end 
 
+--@todo the current solution for customized type is combining all styles, top level style has more priority.
 function GuiBuilder:buildStyle(style_builder_callback)
-    if self:isRoot() then 
-        if typeof(style_builder_callback) ~= "function" then error("GuiBuilder:buildStyle, style_builder_callback should be function type.") end 
-        local sb = self.factory:createStyleBuilder()
-        style_builder_callback(sb)
+    if typeof(style_builder_callback) ~= "function" then error("GuiBuilder:buildStyle, style_builder_callback should be function type.") end 
+    local sb = self.factory:createStyleBuilder()
+    style_builder_callback(sb)
+    if self.style then 
+        self.style = sb:getStyle():merge(self.style)
+    else 
         self.style = sb:getStyle()
-    else self.root:buildStyle(style_builder_callback) end 
+    end
     return self
 end 
 
@@ -116,11 +119,11 @@ function GuiBuilder:getGui(name, player, root)
     if parent_factoobj == nil then error("GuiBuilder:getGui, root is invalid.") end
     if parent_factoobj[name] ~= nil then error(string.format("GuiBuilder:getGui, player.gui[%s].%s already exisits.", root, name)) end 
     self.name = name 
-    self.id = string.format("%s_%s_%s", player.index, root, name)
+    self.id = string.format("%s_%s_%s", root, player.index, name)
     self:createGui(parent_factoobj)
     self.gui.handlers = self.handlers
     if self.style then self.gui:applyStyle(self.style) end 
-    self.gui:onattached(self.gui)
+    self.gui:onattached(self.gui) --- notify all children when attached
     return self.gui
 end 
 
@@ -130,6 +133,11 @@ function GuiBuilder:createGui(parent_factoobj, root)
         :create(self.id, self.name, self.type, self.data, self.options, root)
         :attach(parent_factoobj)
     if root == nil then self.gui.root = self.gui end 
+    if self.style then self.style:fix(self.name) end 
+    if not self:isRoot() and self.style then  
+        if self.root.style then self.root.style:merge(self.style)
+        else self.root.style = self.style end
+    end
     -- @fixme if gui is an container
     if self.children then 
         for _, builder in pairs(self.children) do 
