@@ -177,5 +177,26 @@ function Class.__metalize(class, tbl)
     return setmetatable(tbl or {}, class)
 end 
 
+local Try = Class.create()
+
+function Try:__constructor(try_block)
+    if type(try_block) ~= "function" then error("try_block should be function type") end
+    self.status, self.retval = pcall(try_block)
+    self.try_block = try_block
+end 
+
+function Try:catch(catch_block)
+    if type(catch_block) ~= "function" then error("catch_block should be function type") end
+    if not self.status then catch_block(self.retval) end
+    return self
+end 
+
+function Try:finally(finally_block)
+    if type(finally_block) ~= "function" then error("finally_block should be function type") end
+    pcall(finally_block)
+end 
+
+_G["try"] = Try
+
 -- @export 
 return Class
