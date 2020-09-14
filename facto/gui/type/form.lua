@@ -13,5 +13,9 @@ function Form:getProps(props)
     return props
 end
 
+function Form:isForm()
+    return true
+end
+
 -- @export
 return Form

@@ -150,7 +150,7 @@ end
 function GuiFactory:getTypesRegistered()
     local all = {}
     for t, class in pairs(self.registered) do
-        table.insert(all, t)
+        table.insert(all, { id = t, description = t })
     end
     return all
 end 

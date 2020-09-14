@@ -14,5 +14,9 @@ function CheckBox:getProps(props)
     return props
 end 
 
+function CheckBox:setValue(value)
+    self.factoobj.state = (value ~= nil) or false
+end 
+
 -- @export
 return CheckBox

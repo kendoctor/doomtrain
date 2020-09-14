@@ -9,8 +9,12 @@ Text.RuleSupports = {
 
 function Text:getProps(props)    
     props.type = "textfield"
-    if self.data ~= nil then props.text = tostring(self.data) end 
     return props
+end 
+
+function Text:setValue(value)
+    if value == nil then return end
+    self.factoobj.text = tostring(value)
 end 
 
 -- @export

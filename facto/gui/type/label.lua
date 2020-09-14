@@ -8,5 +8,10 @@ function Label:getProps(props)
     return props
 end 
 
+function Label:setValue(value)
+    if value == nil or self.options.caption then return end 
+    self.factoobj.caption = tostring(value)
+end 
+
 -- @export
 return Label

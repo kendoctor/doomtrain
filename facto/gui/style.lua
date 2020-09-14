@@ -122,7 +122,7 @@ function Style:fix(name)
     for selector, ruleset in pairs(self.rulesets) do 
         if selector == "@self" then 
             self.rulesets[selector] = nil 
-            self.rulesets[name] =  ruleset
+            self.rulesets["#"..name] =  ruleset
             break
         end
     end 

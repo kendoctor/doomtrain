@@ -12,5 +12,10 @@ function Button:getProps(props)
     return props
 end 
 
+function Button:setValue(value)
+    if value == nil or self.options.caption then return end 
+    self.factoobj.caption = tostring(value)
+end 
+
 -- @export
 return Button

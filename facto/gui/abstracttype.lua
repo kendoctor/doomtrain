@@ -169,6 +169,45 @@ function AbstractType:isRuleSupported(prop)
     return false
 end 
 
+function AbstractType:getValue()
+end 
+
+function AbstractType:getData()
+    
+end 
+
+function AbstractType:isForm()
+    return false
+end 
+
+function AbstractType:setData(data)
+    if self:isRoot() then 
+        self.data = data
+        self:updateData()
+    end
+end 
+
+function AbstractType:updateData()
+    if self.data == nil then return end
+    local value = self.data[self.name] 
+    -- value could be nil, maybe to clear the field
+    -- not auto generated name or binding disabled
+    if not self:isForm() then self:setValue(value) end 
+    if type(self.children) ~= "table" then return end
+    for name, child in pairs(self.children) do
+        if self:isForm() and type(value) == "table" then 
+            child.data = value
+        elseif not self:isForm() then 
+            child.data = self.data
+        end
+        child:updateData()
+    end
+end 
+
+function AbstractType:setValue(value)
+    -- error(" AbstractType:setValue must be overriden")
+end
+
 function AbstractType:show()
     self.factoobj.visible = true
 end 

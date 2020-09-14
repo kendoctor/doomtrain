@@ -44,6 +44,7 @@ function GuiBuilder:__constructor(type, data, options, factory, root)
     self.gui = nil
     self.locked = false 
     self.current_zone = self
+    -- @fixme class to object
     class.buildGui(self, self.options)
     self.zones = class.buildZones(self)
     self.current_zone = self:currentZone() 
@@ -61,9 +62,10 @@ function GuiBuilder:add(name, type, options, children_builder_callback)
     local data, zone
     zone = self.current_zone
     -- form1, subform
-    if typeof(self.data) == "table" then data = self.data[name] end
+    -- if typeof(self.data) == "table" then data = self.data[name] end
     name = name or self.factory:generateName()
-    local cb = self.factory:createBuilder(type, data, options, self.root)
+    -- @todo auto generated name flag
+    local cb = self.factory:createBuilder(type, nil, options, self.root)
     cb.name = name
     cb.parent = zone
     zone.children[name] = cb
@@ -124,6 +126,7 @@ function GuiBuilder:getGui(name, player, root)
     self.gui.handlers = self.handlers
     if self.style then self.gui:applyStyle(self.style) end 
     self.gui:onattached(self.gui) --- notify all children when attached
+    self.gui:updateData()
     return self.gui
 end 
 

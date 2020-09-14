@@ -9,8 +9,12 @@ TextBox.RuleSupports = {
 
 function TextBox:getProps(props)
     props.type = "text-box"
-    props.text = self.data 
     return props
+end 
+
+function TextBox:setValue(value)
+    if value == nil then return end
+    self.factoobj.text = tostring(value)
 end 
 
 -- @export
