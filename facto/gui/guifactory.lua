@@ -29,18 +29,25 @@ function GuiFactory:initialize()
     self:setup()
 end 
 
+-- @todo stopPropagation feature
+function bubble_event(current_target, target)
+    if current_target.options.onclick then 
+        local h = (loadstring or load)(current_target.options.onclick)
+        h(current_target.root, target, current_target.factoobj.gui.player)
+    end
+    if current_target.parent then bubble_event(current_target.parent, target) end
+end
+
 function GuiFactory:on_gui_click(e)
     -- @todo via e.element to get id 
     for id, instance in pairs(self.serialize.instanced) do 
         if instance.factoobj == e.element then 
-            local handlers = instance.root.handlers
-            if handlers.onclick then 
-                for _, serialized_handler in pairs(handlers.onclick) do 
-                    if not instance:isValid() then break end 
-                    local h = (loadstring or load)(serialized_handler)
-                    h(instance.root, instance, instance.factoobj.gui.player)
-                end 
-            end 
+            bubble_event(instance, instance)
+            if instance.type == "submit" and instance.root.options.onsubmit then
+                instance.root:submit()
+                local h = (loadstring or load)(instance.root.options.onsubmit)
+                h(instance.root, instance, instance.factoobj.gui.player)
+            end
         end 
     end 
 end 
@@ -99,6 +106,10 @@ function GuiFactory:setup()
     class = require("facto.gui.type.tabpanel")
     self:register(class.type, class)
     class = require("facto.gui.type.scrolllist")
+    self:register(class.type, class)
+    class = require("facto.gui.type.checkboxgroup")
+    self:register(class.type, class)
+    class = require("facto.gui.type.submit")
     self:register(class.type, class)
 end 
 

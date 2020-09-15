@@ -61,8 +61,6 @@ function GuiBuilder:add(name, type, options, children_builder_callback)
     -- check self is a container
     local data, zone
     zone = self.current_zone
-    -- form1, subform
-    -- if typeof(self.data) == "table" then data = self.data[name] end
     name = name or self.factory:generateName()
     -- @todo auto generated name flag
     local cb = self.factory:createBuilder(type, nil, options, self.root)
@@ -95,16 +93,18 @@ end
 
 --- @todo id could be manually set, filter for specific element
 function GuiBuilder:onclick(handler)
-    if self:isRoot() then
-        if typeof(handler) ~= "function" then error(" GuiBuilder:onclick, handler should be function type.") end
-        if not is_valid_serialization_function(handler) then error("AbstractType.onclick, invalid handler for serialization.") end 
-        self.handlers["onclick"] = self.handlers["onclick"] or {}    
-        table.insert(self.handlers["onclick"], string.dump(handler))
-    else
-        self.root:onclick(handler)
-    end 
+    if typeof(handler) ~= "function" then error(" GuiBuilder:onclick, handler should be function type.") end
+    if not is_valid_serialization_function(handler) then error("AbstractType.onclick, invalid handler for serialization.") end 
+    self.options.onclick = string.dump(handler)
     return self
 end 
+
+function GuiBuilder:onsubmit(handler)
+    if typeof(handler) ~= "function" then error(" GuiBuilder:onclick, handler should be function type.") end
+    if not is_valid_serialization_function(handler) then error("AbstractType.onclick, invalid handler for serialization.") end 
+    self.root.options.onsubmit = string.dump(handler)
+    return self
+end
 
 function GuiBuilder:isRoot()
     return self == self.root

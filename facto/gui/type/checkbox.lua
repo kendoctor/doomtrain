@@ -7,15 +7,25 @@ CheckBox.RuleSupports = {
     "color", "height", "width", "font"
 }
 
+function CheckBox:initialize()
+    self.options.binding_disabled = self.options.binding_disabled or false
+end 
+
+-- @todo sync field data into model data if not binding_disabled
+function CheckBox:getValue()
+    return self.factoobj.state
+end
+
 function CheckBox:getProps(props)
     props.type = "checkbox"
     -- @fixme should check data type
-    props.state = (self.data ~= nil) or false
+    props.state = false
     return props
 end 
 
 function CheckBox:setValue(value)
-    self.factoobj.state = (value ~= nil) or false
+    if not type(value) == "boolean" then value  = false end
+    self.factoobj.state = value
 end 
 
 -- @export

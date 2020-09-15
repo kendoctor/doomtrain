@@ -16,6 +16,7 @@ local function parse_items(items)
 end 
 
 function ListBox:initialize()
+    self.options.binding_disabled = self.options.binding_disabled or false
     self.options.items = self.options.items or {}
 end 
 
@@ -46,7 +47,12 @@ end
     end
 ]]
 function ListBox:getValue()
-    -- self.option.id_to_object
+    local value 
+    local select_index  = self.factoobj.selected_index
+    if select_index > 0 then 
+        value  = self.options.items[select_index].id
+    end 
+    return value
 end
 
 -- @todo before setValue, if value is object then, translate to id

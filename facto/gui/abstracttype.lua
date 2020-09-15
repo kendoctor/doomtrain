@@ -25,6 +25,10 @@ AbstractType.ColorRules = {
     "color"
 }
 
+AbstractType.RuleSupports = {
+    "height", "width"
+}
+
 local function color_value_translator(value)
     -- if type(value) == "table" then return value end 
     local color = AbstractType.ColorPresets[value]
@@ -77,13 +81,14 @@ function AbstractType:__constructor(id, name, data, options, root)
     self.id = id
     self.name = name 
     self.data = data 
-    self.options = options
+    self.options = options    
     self.root = root
     self.handlers = {}    
     self:initialize()
 end 
 
 function AbstractType:initialize()
+    self.options.binding_disabled = self.options.binding_disabled or true
 end 
 
 function AbstractType:getName()
@@ -172,9 +177,34 @@ end
 function AbstractType:getValue()
 end 
 
-function AbstractType:getData()
-    
+function get_binding_data(self)
+    return self.data
 end 
+
+function AbstractType:getData()
+    if self:isRoot() then return get_binding_data(self) end
+end 
+
+-- get field presentation data
+function AbstractType:getFieldValue()
+end 
+
+function AbstractType:submitData()
+    -- game.print(self.name..":"..tostring(self.options.binding_disabled))
+    if self.data and not self.options.binding_disabled then self.data[self.name] = self:getValue() end
+end
+
+function submit(self)
+    self:submitData()
+    if type(self.children) ~= "table" then return end
+    for name, child in pairs(self.children) do
+        submit(child)
+    end
+end 
+
+function AbstractType:submit()
+    if self:isRoot() then submit(self) end
+end
 
 function AbstractType:isForm()
     return false
@@ -192,7 +222,7 @@ function AbstractType:updateData()
     local value = self.data[self.name] 
     -- value could be nil, maybe to clear the field
     -- not auto generated name or binding disabled
-    if not self:isForm() then self:setValue(value) end 
+    if not self:isForm() and not self.options.binding_disabled then self:setValue(value) end 
     if type(self.children) ~= "table" then return end
     for name, child in pairs(self.children) do
         if self:isForm() and type(value) == "table" then 
