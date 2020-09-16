@@ -7,6 +7,11 @@ local ContainerType = require("facto.gui.containertype")
 local Form = Class.extend({}, ContainerType)
 Form.type = "form"
 
+function Form:initialize()
+    self.children = {}
+    self.options.binding_disabled = self.options.binding_disabled or false
+end 
+
 function Form:getProps(props)
     props.type = "flow"
     props.direction = "vertical"

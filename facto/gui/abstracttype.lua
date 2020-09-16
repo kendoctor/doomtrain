@@ -174,9 +174,6 @@ function AbstractType:isRuleSupported(prop)
     return false
 end 
 
-function AbstractType:getValue()
-end 
-
 function get_binding_data(self)
     return self.data
 end 
@@ -191,7 +188,7 @@ end
 
 function AbstractType:submitData()
     -- game.print(self.name..":"..tostring(self.options.binding_disabled))
-    if self.data and not self.options.binding_disabled then self.data[self.name] = self:getValue() end
+    if self.data and not self.options.binding_disabled and not self:isForm() then self.data[self.name] = self:getValue() end
 end
 
 function submit(self)
@@ -234,8 +231,10 @@ function AbstractType:updateData()
     end
 end 
 
+function AbstractType:getValue()
+end 
+
 function AbstractType:setValue(value)
-    -- error(" AbstractType:setValue must be overriden")
 end
 
 function AbstractType:show()
