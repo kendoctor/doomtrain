@@ -109,6 +109,8 @@ function GuiFactory:setup()
     self:register(class.type, class)
     class = require("facto.gui.type.checkboxgroup")
     self:register(class.type, class)
+    class = require("facto.gui.type.radiogroup")
+    self:register(class.type, class)
     class = require("facto.gui.type.submit")
     self:register(class.type, class)
 end 
